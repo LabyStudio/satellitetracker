@@ -1,85 +1,221 @@
-// Create scene
-const scene = new THREE.Scene();
+// Vars
+const EARTH_RADIUS = 6_378_137;
+const ATMOSPHERE_HEIGHT = 80_000;
+const SUN_DISTANCE = 151_840_000_000;
 
-// ISS
-const loader = new THREE.GLTFLoader();
+let cameraState = 0;
+
 let iss = null;
-loader.load('assets/ISS_stationary.glb', function (gltf) {
-    scene.add(iss = gltf.scene);
-}, function (xhr) {
-}, function (error) {
-    console.error(error);
-});
+let sunContainer = new THREE.Object3D();
+let earth = null;
+let atmosphere = null;
+let earthContainer = new THREE.Object3D();
 
-// Earth
-const sphereGeometry = new THREE.SphereBufferGeometry(6378137, 32, 32);
-const sphereMaterial = new THREE.MeshStandardMaterial({color: 0xffffff});
-sphereMaterial.map = THREE.ImageUtils.loadTexture('assets/earth.jpg')
-sphereMaterial.map.minFilter = THREE.LinearFilter;
+// Add sun to earth container
+earthContainer.add(sunContainer)
 
-const earth = new THREE.Mesh(sphereGeometry, sphereMaterial);
-earth.castShadow = true;
-earth.receiveShadow = false;
-scene.add(earth);
+function createSpaceScene(camera) {
+    // Create scene
+    const scene = new THREE.Scene();
+    scene.add(earthContainer);
 
-// Sun
-const sun = new THREE.HemisphereLight(0xffffff, 0x000000, 4.0);
-scene.add(sun);
+    // Ambient Light
+    const light = new THREE.AmbientLight(0x888888, 3.2); // TODO: 0.2
+    scene.add(light);
 
-// #############################################################
-// ------------------------- RENDERING -------------------------
-// #############################################################
+    // Sun
+    const reflectionLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    sunContainer.add(reflectionLight);
 
-let lastIssLon;
-let lastIssLat;
-let updateCounter = 0;
+    // Earth
+    const earthGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS, 32, 32);
+    const earthMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
+    earth = new THREE.Mesh(earthGeometry, earthMaterial);
+    earthMaterial.map = THREE.ImageUtils.loadTexture('assets/img/earth_map.jpg');
+    earthMaterial.map.minFilter = THREE.LinearFilter;
+    earthMaterial.bumpMap = THREE.ImageUtils.loadTexture('assets/img/earth_bump.jpg');
+    earthMaterial.bumpScale = 10000;
+    earthMaterial.specularMap = THREE.ImageUtils.loadTexture('assets/img/earth_spec.jpg');
+    earthMaterial.specular = new THREE.Color(0x050505);
+    earthMaterial.shininess = 100;
+    earth.castShadow = true;
+    earth.receiveShadow = true;
+    earthContainer.add(earth);
 
-// Init
-updateSpace();
+    // Atmosphere
+    const atmosphereGeometry = new THREE.SphereGeometry(EARTH_RADIUS + ATMOSPHERE_HEIGHT, 256, 256)
+    createAtmosphereMaterial(function (atmosphereMaterial) {
+        atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        earthContainer.add(atmosphere);
+    });
 
-function updateSpace() {
+    // Stars
+    const starsGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS * 3, 32, 32);
+    const starsMaterial = new THREE.MeshPhongMaterial();
+    const stars = new THREE.Mesh(starsGeometry, starsMaterial);
+    starsMaterial.map = THREE.ImageUtils.loadTexture('assets/img/galaxy_starfield.png');
+    starsMaterial.side = THREE.BackSide;
+    earthContainer.add(stars);
+
+    // ISS
+    const loader = new THREE.GLTFLoader();
+    loader.load('assets/objects/ISS_stationary.glb', function (gltf) {
+        scene.add(iss = gltf.scene);
+        camera.updateProjectionMatrix();
+    }, function (xhr) {
+    }, function (error) {
+        console.error(error);
+    });
+
+
+    // #############################################################
+    // ------------------------- RENDERING -------------------------
+    // #############################################################
+
+    // Init
+    updateSpace(new Date());
+
+    return scene;
+}
+
+function updateSpace(time) {
     // Calculate iss position
     if (iss != null) {
-        let {longitude: issLon, latitude: issLat, height: issHeight} = getPositionOfISS(new Date());
-        let heightOfIssInMeters = 6378137 + issHeight * 1000;
+        let prevTime = new Date(time.getTime() - 1000 * 60);
+
+        let {latitude: issLat, longitude: issLon, height: issHeight} = getPositionOfISS(time);
+        let {latitude: prevIssLat, longitude: prevIssLon} = getPositionOfISS(prevTime);
+        let heightOfIssInMeters = EARTH_RADIUS + issHeight * 1000;
 
         // The ISS stays at position 0 0 0 but the earth is relative to the ISS,
         // so using the ISS position for the earth.
 
-        earth.position.set(0, -heightOfIssInMeters, 0);
-        earth.rotation.y = (-issLon + 90) * (Math.PI / 180);
-        earth.rotation.x = (-issLat + 90) * (Math.PI / 180);
+        // Update the position everything inside of the earth container
+        earthContainer.position.set(0, -heightOfIssInMeters, 0);
 
-        const lat1 = issLat * (Math.PI / 180);
-        const lon1 = issLon * (Math.PI / 180);
-        const lat2 = lastIssLat * (Math.PI / 180);
-        const lon2 = lastIssLon * (Math.PI / 180);
+        // Update the rotation of the earth (Actual ISS position)
+        earth.rotation.y = toRadians(-issLon + 90);
+        earth.rotation.x = toRadians(-issLat + 90);
 
-        // Calculate the direction of the ISS based on the previous location
-        const dLon = Math.abs(lon2 - lon1);
-        const y = Math.sin(dLon) * Math.cos(lat2);
-        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-        iss.rotation.y = -Math.atan2(y, x) - Math.PI / 2;
-
-        // Save previous location
-        if (updateCounter > 1000 || updateCounter === 0) {
-            lastIssLon = issLon;
-            lastIssLat = issLat;
-            updateCounter = 0;
-        }
-        updateCounter++;
+        let pos = latLonToVector3(issLat * (Math.PI / 180), (issLon + 90) * (Math.PI / 180)).multiplyScalar(1.1);
+        let prevPos = latLonToVector3(prevIssLat * (Math.PI / 180), (prevIssLon + 90) * (Math.PI / 180)).multiplyScalar(1.1);
+        iss.position.set(pos.x, pos.y, pos.z);
+        iss.lookAt(prevPos);
+        iss.position.set(0, 0, 0);
+        iss.rotation.x = 0;
+        iss.rotation.z = 0;
     }
 
     // Calculate sun position
-    let {lng: sunLon, lat: sunLat} = getPositionOfSun(new Date());
-    let {x: sunX, y: sunY, z: sunZ} = LLHtoECEF(sunLon, sunLat, 100000);
-    sun.position.set(sunX, sunY, sunZ);
+    let {lng: sunLon, lat: sunLat} = getPositionOfSun(time);
+    let sunPosition = latLonToVector3(sunLat, sunLon).multiplyScalar(SUN_DISTANCE);
+    sunContainer.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
 }
 
-function getSpaceScene() {
-    return scene;
+function updateCameraAndControls(camera, controls) {
+    let radius = controls.getRadius();
+    let hasFocusOnIss = radius < Math.max(-earth.position.y, EARTH_RADIUS);
+
+    // Update near rendering distance
+    updateNearDistance(camera, radius);
+
+    controls.minDistance = 10;
+    controls.maxDistance = EARTH_RADIUS * 3;
+    controls.zoomSpeed = radius < 200 || radius >= EARTH_RADIUS ? 1 : 8;
+
+    if (iss != null) {
+        updateCameraTarget(camera, controls, hasFocusOnIss);
+
+        if (atmosphere != null) {
+            // The camera vector
+            let cameraVector = new THREE.Vector3(camera.matrix.elements[8], camera.matrix.elements[9], camera.matrix.elements[10]);
+
+            // Calculate a perfect vector over the horizon
+            let dummyCameraPosition = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z);
+            let dummyPosition = dummyCameraPosition.clone();
+            dummyPosition.add(cameraVector.clone().multiplyScalar(-1));
+            dummyPosition.y = dummyCameraPosition.y - 1.0;
+            let fixedIssViewVector = new THREE.Vector3().subVectors(camera.position, dummyPosition);
+
+            // Looking straight to earth or over the horizon
+            atmosphere.material.uniforms.viewVector.value = hasFocusOnIss ? fixedIssViewVector : cameraVector;
+        }
+    }
 }
 
-function getCameraTarget() {
-    return iss == null ? new THREE.Vector3(0, 0, 0) : iss.position;
+function updateCameraTarget(camera, controls, hasFocusOnIss) {
+    if (cameraState === 0) {
+        if (!hasFocusOnIss) {
+            // Called when the camera moves out of the iss
+            cameraState = 1;
+
+            // Change target
+            controls.target = earthContainer.position;
+
+            // Update
+            camera.updateProjectionMatrix();
+        }
+    } else {
+        if (hasFocusOnIss) {
+            // Called when the camera moved back into the iss
+            cameraState = 0;
+
+            // Change target
+            controls.target = new THREE.Vector3(0, 0, 0);
+
+            // Set camera position above the ISS
+            camera.position.x = earthContainer.position.x;
+            camera.position.y = 3000;
+            camera.position.z = earthContainer.position.z;
+
+            // Update
+            camera.updateProjectionMatrix();
+        }
+    }
+}
+
+function updateNearDistance(camera, radius) {
+    let prevCameraNear = camera.near;
+    camera.near = radius < 10000 ? 1 : 100000;
+
+    if (prevCameraNear !== camera.near) {
+        camera.updateProjectionMatrix();
+    }
+}
+
+
+function createAtmosphereMaterial(callback) {
+    const loader = new THREE.FileLoader();
+    loader.load("assets/shaders/atmosphere.frag", function (fragmentShader) {
+        loader.load("assets/shaders/atmosphere.vert", function (vertexShader) {
+            const material = new THREE.ShaderMaterial({
+                uniforms:
+                    {
+                        "c": {
+                            type: "f",
+                            value: 0.6
+                        },
+                        "p": {
+                            type: "f",
+                            value: 0.9
+                        },
+                        glowColor: {
+                            type: "c",
+                            value: new THREE.Color(0x47AEF7)
+                        },
+                        viewVector: {
+                            type: "v3",
+                            value: new THREE.Vector3(0, 0, 0)
+                        }
+                    },
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                side: THREE.FrontSide,
+                blending: THREE.AdditiveBlending,
+                transparent: true
+            });
+
+            callback(material);
+        });
+    });
 }

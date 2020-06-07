@@ -32,7 +32,7 @@ function getPositionOfISS(date) {
     // The position_velocity result is a key-value pair of ECI coordinates.
     // These are the base results from which all other coordinates are derived.
     const positionEci = positionAndVelocity.position,
-        velocityEci = positionAndVelocity.velocity;
+        velocity = positionAndVelocity.velocity;
 
     // You will need GMST for some of the coordinate transforms.
     // http://en.wikipedia.org/wiki/Sidereal_time#Definition
@@ -49,29 +49,72 @@ function getPositionOfISS(date) {
         satelliteZ = positionEci.z;
 
     // Geodetic coords are accessed via `longitude`, `latitude`, `height`.
-    let longitude = positionGd.longitude,
-        latitude = positionGd.latitude,
+    let latitude = positionGd.latitude,
+        longitude = positionGd.longitude,
         height = positionGd.height;
 
     //  Convert the RADIANS to DEGREES
-    longitude = satellite.degreesLong(longitude);
     latitude = satellite.degreesLat(latitude);
+    longitude = satellite.degreesLong(longitude);
 
-    return {longitude, latitude, height};
+    return {latitude, longitude, height, velocity};
 }
 
-function LLHtoECEF(lat, lon, alt) {
-    const rad = 6378137.0;       // Radius of the Earth (in meters)
-    const f = 1.0 / 298.257223563;  // Flattening factor WGS84 Model
-    const cosLat = Math.cos(lat);
-    const sinLat = Math.sin(lat);
-    const FF = (1.0 - f) * (1.0 - f);
-    const C = 1 / Math.sqrt(cosLat * cosLat + FF * sinLat * sinLat);
-    const S = C * FF;
+// https://gist.github.com/nicoptere/2f2571db4b454bb18cd9
+function latLonToVector3(lat, lng) {
+    let out = new THREE.Vector3();
 
-    const x = (rad * C + alt) * cosLat * Math.cos(lon);
-    const y = (rad * C + alt) * cosLat * Math.sin(lon);
-    const z = (rad * S + alt) * sinLat;
+    //flips the Y axis
+    lat = Math.PI / 2 - lat;
 
-    return {x, y, z};
+    //distribute to sphere
+    out.set(
+        Math.sin(lat) * Math.sin(lng),
+        Math.cos(lat),
+        Math.sin(lat) * Math.cos(lng)
+    );
+
+    return out;
+}
+
+function toRadians(degrees) {
+    return degrees * (Math.PI / 180);
+}
+
+function toDegrees(radians) {
+    return radians * 180 / Math.PI;
+}
+
+function getYaw(vector) {
+    return Math.atan2(vector.x, vector.z);
+}
+
+function getPitch(vector) {
+    const distance = Math.sqrt(vector.z * vector.z + vector.x * vector.x);
+    return Math.atan2(vector.y, distance);
+}
+
+function getVector(yaw, pitch) {
+    const pi = Math.PI;
+    const pitchRadians = toRadians(pitch);
+    const yawRadians = toRadians(yaw);
+
+    const sinPitch = Math.sin(pitchRadians);
+    const cosPitch = Math.cos(pitchRadians);
+    const sinYaw = Math.sin(yawRadians);
+    const cosYaw = Math.cos(yawRadians);
+
+    return new THREE.Vector3(-cosPitch * sinYaw, sinPitch, -cosPitch * cosYaw);
+}
+
+
+function lookAt(location, target) {
+    let xDiff = target.x - location.x;
+    let yDiff = target.y - location.y;
+    let zDiff = target.z - location.z;
+
+    let distanceXZ = Math.sqrt(xDiff * xDiff + zDiff * zDiff);
+    let distanceY = Math.sqrt(distanceXZ * distanceXZ + yDiff * yDiff);
+
+
 }

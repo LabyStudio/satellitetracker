@@ -98,6 +98,10 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	};
 
+	this.getRadius = function () {
+		return spherical.radius;
+	};
+
 	this.saveState = function () {
 
 		scope.target0.copy( scope.target );
