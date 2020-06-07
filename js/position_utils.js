@@ -20,6 +20,30 @@ function getPositionOfSun(date) {
     return {lng, lat};
 }
 
+function getPositionAndRotationOfISS(date) {
+    // A few moments before
+    let prevDate = new Date(date.getTime() - 1000 * 60);
+
+    // Get current data and previous data
+    let {latitude: latitude, longitude: longitude, height: height, velocity: velocity} = getPositionOfISS(date);
+    let {latitude: prevLatitude, longitude: prevLongitude} = getPositionOfISS(prevDate);
+
+    // Get current position and previous position
+    let position = latLonToVector3(latitude, longitude + 90);
+    let prevPosition = latLonToVector3(prevLatitude, prevLongitude + 90);
+
+    // Create dummy object to use the lookAt function
+    let dummyIss = new THREE.Object3D();
+    dummyIss.position.set(position.x, position.y, position.z);
+    dummyIss.lookAt(prevPosition);
+
+    // Extract the rotation of the iss
+    let rotation = dummyIss.rotation;
+
+    // Return the result
+    return {latitude, longitude, height, velocity, rotation, position};
+}
+
 function getPositionOfISS(date) {
     // Sample TLE
     const tleLine1 = '1 25544U 98067A   20152.78387051  .00000343  00000-0  14210-4 0  9991',
@@ -64,6 +88,10 @@ function getPositionOfISS(date) {
 function latLonToVector3(lat, lng) {
     let out = new THREE.Vector3();
 
+    // To radians
+    lat = toRadians(lat);
+    lng = toRadians(lng);
+
     //flips the Y axis
     lat = Math.PI / 2 - lat;
 
@@ -95,7 +123,6 @@ function getPitch(vector) {
 }
 
 function getVector(yaw, pitch) {
-    const pi = Math.PI;
     const pitchRadians = toRadians(pitch);
     const yawRadians = toRadians(yaw);
 
@@ -116,5 +143,12 @@ function lookAt(location, target) {
     let distanceXZ = Math.sqrt(xDiff * xDiff + zDiff * zDiff);
     let distanceY = Math.sqrt(distanceXZ * distanceXZ + yDiff * yDiff);
 
+    let yaw = toDegrees(Math.acos(xDiff / distanceXZ));
+    let pitch = toDegrees(Math.acos(yDiff / distanceY)) - 90.0;
 
+    if (zDiff < 0.0) {
+        yaw += Math.abs(180.0 - yaw) * 2.0;
+    }
+
+    return getVector(yaw - 90, pitch);
 }

@@ -20,7 +20,7 @@ function createSpaceScene(camera) {
     scene.add(earthContainer);
 
     // Ambient Light
-    const light = new THREE.AmbientLight(0x888888, 3.2); // TODO: 0.2
+    const light = new THREE.AmbientLight(0x888888, debug ? 3.2 : 0.2);
     scene.add(light);
 
     // Sun
@@ -78,36 +78,31 @@ function createSpaceScene(camera) {
     return scene;
 }
 
-function updateSpace(time) {
+function updateSpace(date) {
     // Calculate iss position
     if (iss != null) {
-        let prevTime = new Date(time.getTime() - 1000 * 60);
-
-        let {latitude: issLat, longitude: issLon, height: issHeight} = getPositionOfISS(time);
-        let {latitude: prevIssLat, longitude: prevIssLon} = getPositionOfISS(prevTime);
-        let heightOfIssInMeters = EARTH_RADIUS + issHeight * 1000;
-
-        // The ISS stays at position 0 0 0 but the earth is relative to the ISS,
-        // so using the ISS position for the earth.
+        // The ISS stays at position 0 0 0 but the earth is relative to the ISS, so using the ISS position for the earth.
+        let {latitude: latitude, longitude: longitude, height: height, velocity: velocity, rotation: rotation, position: position} = getPositionAndRotationOfISS(date);
+        let totalHeightInMeters = EARTH_RADIUS + height * 1000;
 
         // Update the position everything inside of the earth container
-        earthContainer.position.set(0, -heightOfIssInMeters, 0);
+        earthContainer.position.set(0, -totalHeightInMeters, 0);
 
         // Update the rotation of the earth (Actual ISS position)
-        earth.rotation.y = toRadians(-issLon + 90);
-        earth.rotation.x = toRadians(-issLat + 90);
+        earth.rotation.x = toRadians(-latitude + 90);
+        earth.rotation.y = toRadians(-longitude + 90);
 
-        let pos = latLonToVector3(issLat * (Math.PI / 180), (issLon + 90) * (Math.PI / 180)).multiplyScalar(1.1);
-        let prevPos = latLonToVector3(prevIssLat * (Math.PI / 180), (prevIssLon + 90) * (Math.PI / 180)).multiplyScalar(1.1);
-        iss.position.set(pos.x, pos.y, pos.z);
-        iss.lookAt(prevPos);
-        iss.position.set(0, 0, 0);
-        iss.rotation.x = 0;
-        iss.rotation.z = 0;
+        // Rotate the iss into the right direction
+        iss.rotation.set(0, toRadians(-90) - rotation.y, 0);
+
+        // TODO: Based on which axis the iss is flying, the rotaiton x/y/z is used differently. We have to find a way to include all 3 axis for the rotation (maybe subtract the earth rotation?)
+
+        // Rotate the camera with the rotation of the iss (Auto follow)
+        // spaceScene.rotation.set(0, rotation.y, 0);
     }
 
     // Calculate sun position
-    let {lng: sunLon, lat: sunLat} = getPositionOfSun(time);
+    let {lng: sunLon, lat: sunLat} = getPositionOfSun(date);
     let sunPosition = latLonToVector3(sunLat, sunLon).multiplyScalar(SUN_DISTANCE);
     sunContainer.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
 }

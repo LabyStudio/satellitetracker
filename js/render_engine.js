@@ -1,6 +1,4 @@
-/*
- * Render engine
- */
+const debug = false;
 const supportWebGL = !!WebGLRenderingContext && (!!document.createElement('canvas').getContext('experimental-webgl')
     || !!document.createElement('canvas').getContext('webgl'));
 
@@ -35,12 +33,18 @@ const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enablePan = false;
 
 // Add debug
-const debugScene = createDebugScene(camera);
-spaceScene.add(debugScene);
+if (debug) {
+    debugScene = createDebugScene(camera);
+    spaceScene.add(debugScene);
+}
 
 // Rendering
 const render = function () {
-    const time = new Date((new Date().getTime() - 1591446057000) * 500);
+    // The current time for tracking (Super fast time speed in debug mode)
+    let time = debug ? new Date((new Date().getTime() - 1591446057000) * 500) : new Date();
+
+    // Current time with speed
+    //time = new Date((new Date().getTime() - 1591559885569) * 100 + 1591559885569);
 
     // Next frame
     requestAnimationFrame(render);
@@ -49,17 +53,13 @@ const render = function () {
     updateCameraAndControls(camera, controls);
     controls.update();
 
-    // Locate debug scene in front of camera
-    debugScene.rotation.x = camera.rotation.x;
-    debugScene.rotation.y = camera.rotation.y;
-    debugScene.rotation.z = camera.rotation.z;
-    debugScene.position.x = camera.position.x;
-    debugScene.position.y = camera.position.y;
-    debugScene.position.z = camera.position.z;
+    if (debug) {
+        // Locate debug scene in front of camera
+        updateDebug(debugScene, camera, time);
+    }
 
     // Update the entire space
     updateSpace(time);
-    updateDebug(time);
 
     // Render scenes
     renderer.render(spaceScene, camera);
@@ -70,7 +70,6 @@ render();
 
 // On resize
 window.addEventListener('resize', onWindowResize, false);
-
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();

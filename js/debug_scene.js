@@ -5,11 +5,11 @@ let debugGroup = new THREE.Object3D();
 function createDebugScene(camera) {
     // Create scene
     const scene = new THREE.Scene();
-    debugGroup.position.z = -4;
+    debugGroup.position.z = -2;
     scene.add(debugGroup);
 
     let geometry = new THREE.SphereBufferGeometry(1, 32, 32);
-    let material = new THREE.MeshPhongMaterial({color: 0xffffff, transparent: true, opacity: 0.7});
+    let material = new THREE.MeshPhongMaterial({color: 0xffffff, transparent: true, opacity: 0.9});
     let earth = new THREE.Mesh(geometry, material);
     material.map = THREE.ImageUtils.loadTexture('assets/img/earth_map.jpg');
     debugGroup.add(earth);
@@ -27,38 +27,21 @@ function createDebugScene(camera) {
     return scene;
 }
 
-function updateDebug(time) {
-    let prevTime = new Date(time.getTime() - 1000 * 60);
+function updateDebug(debugScene, camera, date) {
+    debugScene.rotation.x = camera.rotation.x;
+    debugScene.rotation.y = camera.rotation.y;
+    debugScene.rotation.z = camera.rotation.z;
+    debugScene.position.x = camera.position.x;
+    debugScene.position.y = camera.position.y;
+    debugScene.position.z = camera.position.z;
 
-    let {latitude: issLat, longitude: issLon, height: issHeight, velocity: issVelocity} = getPositionOfISS(time);
-    let {latitude: prevIssLat, longitude: prevIssLon} = getPositionOfISS(prevTime);
-    let heightOfIssInMeters = issHeight * 1000;
+    // Get current data and previous data
+    let {latitude: latitude, longitude: longitude, height: height, velocity: velocity, rotation: issRotation, position : issPosition} = getPositionAndRotationOfISS(date);
 
-    //issLat = 10;
-   // issLon = (time / 1000) % 10000;
+    debugIss.position.set(issPosition.x, issPosition.y, issPosition.z);
+    debugIss.rotation.set(issRotation.x, issRotation.y, issRotation.z);
 
-    let pos = latLonToVector3(issLat * (Math.PI / 180), (issLon + 90) * (Math.PI / 180)).multiplyScalar(1.1);
-    debugIss.position.set(pos.x, pos.y, pos.z);
-
-    let prevPos = latLonToVector3(prevIssLat * (Math.PI / 180), (prevIssLon + 90) * (Math.PI / 180)).multiplyScalar(1.1);
-    debugVelocity.position.set(prevPos.x, prevPos.y, prevPos.z);
-
-    // Lookat solution
-    //debugIss.lookAt(prevPos);
-
-    // Matrix solution
-    let targetMatrix = new THREE.Matrix4().setPosition(pos);
-    targetMatrix.lookAt(pos, prevPos, new THREE.Vector3( 0, 1, 0 ));
-    let a = targetMatrix.extractRotation(targetMatrix);
-    debugIss.rotation.set(a.x, a.y, a.z);
-    //let vec = new THREE.Vector3().subVectors(pos, prevPos);
-
-
-    //debugIss.rotation.x = issVelocityVector.x * (Math.PI / 180);
-    //debugIss.rotation.y = issVelocityVector.y * (Math.PI / 180);
-    //debugIss.rotation.z = issVelocityVector.z * (Math.PI / 180);
-
-    debugGroup.rotation.y = (-issLon + 90) * (Math.PI / 180);
-    debugGroup.rotation.x = (-issLat + 90 + 90) * (Math.PI / 180);
+    debugGroup.rotation.x = (-latitude + 90 + 90) * (Math.PI / 180);
+    debugGroup.rotation.y = (-longitude + 90) * (Math.PI / 180);
 }
 
