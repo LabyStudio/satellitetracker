@@ -1,47 +1,91 @@
-function getPositionOfSun(date) {
-    const rad = 0.017453292519943295;
-    // based on NOAA solar calculations
-    const mins_past_midnight = (date.getUTCHours() * 60 + date.getUTCMinutes()) / 1440;
-    const jc = (((date.getTime() / 86400000.0) + 2440587.5) - 2451545) / 36525;
-    const mean_long_sun = (280.46646 + jc * (36000.76983 + jc * 0.0003032)) % 360;
-    const mean_anom_sun = 357.52911 + jc * (35999.05029 - 0.0001537 * jc);
-    const sun_eq = Math.sin(rad * mean_anom_sun) * (1.914602 - jc * (0.004817 + 0.000014 * jc)) + Math.sin(rad * 2 * mean_anom_sun) * (0.019993 - 0.000101 * jc) + Math.sin(rad * 3 * mean_anom_sun) * 0.000289;
-    const sun_true_long = mean_long_sun + sun_eq;
-    const sun_app_long = sun_true_long - 0.00569 - 0.00478 * Math.sin(rad * 125.04 - 1934.136 * jc);
-    const mean_obliq_ecliptic = 23 + (26 + ((21.448 - jc * (46.815 + jc * (0.00059 - jc * 0.001813)))) / 60) / 60;
-    const obliq_corr = mean_obliq_ecliptic + 0.00256 * Math.cos(rad * 125.04 - 1934.136 * jc);
-    const lat = Math.asin(Math.sin(rad * obliq_corr) * Math.sin(rad * sun_app_long)) / rad;
-    const eccent = 0.016708634 - jc * (0.000042037 + 0.0000001267 * jc);
-    const y = Math.tan(rad * (obliq_corr / 2)) * Math.tan(rad * (obliq_corr / 2));
-    const rq_of_time = 4 * ((y * Math.sin(2 * rad * mean_long_sun) - 2 * eccent * Math.sin(rad * mean_anom_sun) + 4 * eccent * y * Math.sin(rad * mean_anom_sun) * Math.cos(2 * rad * mean_long_sun) - 0.5 * y * y * Math.sin(4 * rad * mean_long_sun) - 1.25 * eccent * eccent * Math.sin(2 * rad * mean_anom_sun)) / rad);
-    const true_solar_time = (mins_past_midnight * 1440 + rq_of_time) % 1440;
-    const lng = -((true_solar_time / 4 < 0) ? true_solar_time / 4 + 180 : true_solar_time / 4 - 180);
+// Space
+const EARTH_RADIUS = 6_378_137;
+const ATMOSPHERE_HEIGHT = 80_000;
+const SUN_DISTANCE = 151_840_000_000;
 
+// Sun
+const J2000_0 = 946728000000;
+const DOUBLE_PI = 2.0 * Math.PI;
+const MILLISECONDS_PER_CENTURY = 1000 * 3600 * 24 * 36525.0;
+
+function getPositionOfSun(date) {
+    const sunPos = getEquatorialSunPosition(date);
+    return getSunGroundPoint(date.getTime(), sunPos);
+}
+
+function getEquatorialSunPosition(date) {
+    const n = (date.getTime() - J2000_0) / 86400000.0;
+    const lDeg = 280.460 + 0.9856474 * n;
+    const gDeg = 357.528 + 0.9856003 * n;
+    const g = toRadians(gDeg);
+    const lambdaDeg = lDeg + 1.915 * Math.sin(g) + 0.020 * Math.sin(2.0 * g);
+    const lambda = toRadians(lambdaDeg);
+
+    const eDeg = 23.4393 - 3.563e-7 * n;
+    const e = toRadians(eDeg);
+
+    const sinLambda = Math.sin(lambda);
+    const rectAsc = Math.atan2(Math.cos(e) * sinLambda, Math.cos(lambda));
+    const decl = Math.asin(Math.sin(e) * sinLambda);
+
+    return {rectAsc: rectAsc, decl: decl};
+}
+
+function getSunGroundPoint(time, sunPos) {
+    const lat = toDegrees(sunPos.decl);
+    const lng = toDegrees(sunPos.rectAsc - getGMST(time));
     return {lng, lat};
+}
+
+function getGMST(time) {
+    const today0utc = new Date(time);
+    today0utc.setUTCHours(0, 0, 0, 0);
+    const utInMillis = time - today0utc.getTime();
+    const ut = utInMillis / 3600000.0 / 12.0 * Math.PI;   // in radians
+    return rev(getGMST0(time) + ut);
+}
+
+function getGMST0(time) {
+    const tSinceJ2000_0 = time - J2000_0;
+    const t = tSinceJ2000_0 / MILLISECONDS_PER_CENTURY;  // Julian centuries since J2000.0
+    let gmst0Degrees = 100.46061837;
+    gmst0Degrees += 36000.770053608 * t;
+    gmst0Degrees += 3.87933e-4 * t * t;
+    gmst0Degrees += t * t * t / 38710000.0;
+    const gmst0Radians = toRadians(gmst0Degrees);
+    return rev(gmst0Radians);
+}
+
+function rev(angle) {
+    return (angle - Math.floor(angle / DOUBLE_PI) * DOUBLE_PI);
 }
 
 function getPositionAndRotationOfISS(date) {
     // A few moments before
-    let prevDate = new Date(date.getTime() - 1000 * 60);
+    let prevDate = new Date(date.getTime() + 1000 * 60);
 
     // Get current data and previous data
-    let {latitude: latitude, longitude: longitude, height: height, velocity: velocity} = getPositionOfISS(date);
+    let {latitude: latitude, longitude: longitude, height: height} = getPositionOfISS(date);
     let {latitude: prevLatitude, longitude: prevLongitude} = getPositionOfISS(prevDate);
 
+    // Total height in meters
+    let totalHeight = EARTH_RADIUS + height * 1000;
+
     // Get current position and previous position
-    let position = latLonToVector3(latitude, longitude + 90);
-    let prevPosition = latLonToVector3(prevLatitude, prevLongitude + 90);
+    let position = latLonToVector3(latitude, longitude + 90, totalHeight);
+    let prevPosition = latLonToVector3(prevLatitude, prevLongitude + 90, totalHeight);
 
     // Create dummy object to use the lookAt function
     let dummyIss = new THREE.Object3D();
     dummyIss.position.set(position.x, position.y, position.z);
+    dummyIss.up = position;
     dummyIss.lookAt(prevPosition);
 
     // Extract the rotation of the iss
     let rotation = dummyIss.rotation;
 
     // Return the result
-    return {latitude, longitude, height, velocity, rotation, position};
+    return {latitude, longitude, totalHeight, rotation, position};
 }
 
 function getPositionOfISS(date) {
@@ -85,7 +129,7 @@ function getPositionOfISS(date) {
 }
 
 // https://gist.github.com/nicoptere/2f2571db4b454bb18cd9
-function latLonToVector3(lat, lng) {
+function latLonToVector3(lat, lng, height) {
     let out = new THREE.Vector3();
 
     // To radians
@@ -97,9 +141,9 @@ function latLonToVector3(lat, lng) {
 
     //distribute to sphere
     out.set(
-        Math.sin(lat) * Math.sin(lng),
-        Math.cos(lat),
-        Math.sin(lat) * Math.cos(lng)
+        Math.sin(lat) * Math.sin(lng) * height,
+        Math.cos(lat) * height,
+        Math.sin(lat) * Math.cos(lng) * height
     );
 
     return out;

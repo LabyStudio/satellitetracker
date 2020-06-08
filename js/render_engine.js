@@ -43,9 +43,6 @@ const render = function () {
     // The current time for tracking (Super fast time speed in debug mode)
     let time = debug ? new Date((new Date().getTime() - 1591446057000) * 500) : new Date();
 
-    // Current time with speed
-    //time = new Date((new Date().getTime() - 1591559885569) * 100 + 1591559885569);
-
     // Next frame
     requestAnimationFrame(render);
 

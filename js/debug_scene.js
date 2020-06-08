@@ -5,7 +5,9 @@ let debugGroup = new THREE.Object3D();
 function createDebugScene(camera) {
     // Create scene
     const scene = new THREE.Scene();
-    debugGroup.position.z = -2;
+    debugGroup.position.z = -6;
+    debugGroup.position.x = 4;
+    debugGroup.position.y = -1.5;
     scene.add(debugGroup);
 
     let geometry = new THREE.SphereBufferGeometry(1, 32, 32);
@@ -14,15 +16,20 @@ function createDebugScene(camera) {
     material.map = THREE.ImageUtils.loadTexture('assets/img/earth_map.jpg');
     debugGroup.add(earth);
 
-    geometry =  new THREE.PlaneGeometry( 0.1, 0.05 );
-    material = new THREE.MeshPhongMaterial({color: 0x00ffff, side: THREE.DoubleSide});
-    debugIss = new THREE.Mesh(geometry, material);
-    debugGroup.add(debugIss);
-
-    geometry =  new THREE.PlaneGeometry( 0.04, 0.04 );
+    geometry = new THREE.PlaneGeometry(0.04, 0.04);
     material = new THREE.MeshPhongMaterial({color: 0xff2222, side: THREE.DoubleSide});
     debugVelocity = new THREE.Mesh(geometry, material);
     debugGroup.add(debugVelocity);
+
+    const loader = new THREE.GLTFLoader();
+    loader.load('assets/objects/ISS_stationary.glb', function (gltf) {
+        debugGroup.add(debugIss = gltf.scene);
+        debugIss.scale.set(0.001, 0.001, 0.001);
+        camera.updateProjectionMatrix();
+    }, function (xhr) {
+    }, function (error) {
+        console.error(error);
+    });
 
     return scene;
 }
@@ -35,10 +42,13 @@ function updateDebug(debugScene, camera, date) {
     debugScene.position.y = camera.position.y;
     debugScene.position.z = camera.position.z;
 
-    // Get current data and previous data
-    let {latitude: latitude, longitude: longitude, height: height, velocity: velocity, rotation: issRotation, position : issPosition} = getPositionAndRotationOfISS(date);
+    if (debugIss == null)
+        return;
 
-    debugIss.position.set(issPosition.x, issPosition.y, issPosition.z);
+    // Get current data and previous data
+    let {latitude: latitude, longitude: longitude, totalHeight: height, velocity: velocity, rotation: issRotation, position: issPosition} = getPositionAndRotationOfISS(date);
+
+    debugIss.position.set(issPosition.x / height, issPosition.y / height, issPosition.z / height);
     debugIss.rotation.set(issRotation.x, issRotation.y, issRotation.z);
 
     debugGroup.rotation.x = (-latitude + 90 + 90) * (Math.PI / 180);
