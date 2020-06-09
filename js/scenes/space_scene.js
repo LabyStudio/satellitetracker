@@ -25,12 +25,23 @@ function createSpaceScene(camera, controls) {
     issGroup.add(issLabelGroup);
 
     // Ambient Light
-    const light = new THREE.AmbientLight(0x888888, debug ? 3.2 : 0.2);
-    scene.add(light);
+    const nightLight = new THREE.AmbientLight(0x888888, debug ? 3.2 : 0.2);
+    scene.add(nightLight);
 
-    // Sun
+    // Sun light
     const reflectionLight = new THREE.DirectionalLight(0xffffff, 2.0);
     sunGroup.add(reflectionLight);
+
+    // Add sun flare
+    let textureFlareLens = textureLoader.load( "assets/img/lensflares/lens_flare.png" );
+    let textureFlareSun = textureLoader.load( "assets/img/lensflares/sun_flare.png" );
+    let lensflare = new THREE.Lensflare();
+    lensflare.addElement( new THREE.LensflareElement( textureFlareSun, 160, 0.0 ) );
+    lensflare.addElement( new THREE.LensflareElement( textureFlareLens, 60, 0.6 ) );
+    lensflare.addElement( new THREE.LensflareElement( textureFlareLens, 70, 0.7 ) );
+    lensflare.addElement( new THREE.LensflareElement( textureFlareLens, 120, 0.9 ) );
+    lensflare.addElement( new THREE.LensflareElement( textureFlareLens, 70, 1 ) );
+    reflectionLight.add( lensflare );
 
     // Earth
     const earthGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS, 32, 32);
@@ -56,8 +67,8 @@ function createSpaceScene(camera, controls) {
     });
 
     // Stars
-    const starsGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS * 3, 32, 32);
-    const starsMaterial = new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.9});
+    const starsGeometry = new THREE.SphereBufferGeometry(SUN_DISTANCE * 2, 32, 32);
+    const starsMaterial = new THREE.MeshBasicMaterial();
     const stars = new THREE.Mesh(starsGeometry, starsMaterial);
     starsMaterial.map = textureLoader.load('assets/img/galaxy_starfield.jpg');
     starsMaterial.side = THREE.BackSide;

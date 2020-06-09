@@ -3,7 +3,7 @@ const supportWebGL = !!WebGLRenderingContext && (!!document.createElement('canva
     || !!document.createElement('canvas').getContext('webgl'));
 
 // Create camera
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1 /* Updated in space_scene */, 100000000);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1 /* Updated in space_scene */, 10000000000000);
 
 // ISS default view position
 camera.position.set(20, 70, 100);
@@ -28,6 +28,9 @@ renderer.clear();
 // Create controls
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enablePan = false;
+controls.enableDamping = true
+controls.dampingFactor = 0.06;
+controls.rotateSpeed = 0.08;
 
 // Create scenes
 const spaceScene = createSpaceScene(camera, controls);
