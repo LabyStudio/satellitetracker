@@ -25,12 +25,12 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
 renderer.setClearColor(0x000000);
 renderer.clear();
 
-// Create scenes
-const spaceScene = createSpaceScene(camera);
-
 // Create controls
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enablePan = false;
+
+// Create scenes
+const spaceScene = createSpaceScene(camera, controls);
 
 // Add debug
 if (debug) {

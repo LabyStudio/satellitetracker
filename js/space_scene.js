@@ -4,13 +4,16 @@ let sunGroup = new THREE.Object3D();
 let earthGroup = new THREE.Object3D();
 let centerGroup = new THREE.Object3D();
 let issGroup = new THREE.Object3D();
+let issLabelGroup = new THREE.Object3D();
 
 let iss = null;
 let earth = null;
 let atmosphere = null;
-let issLabel = null;
 
-function createSpaceScene(camera) {
+function createSpaceScene(camera, controls) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.crossOrigin = "";
+
     // Create space scene
     const scene = new THREE.Scene();
 
@@ -19,6 +22,7 @@ function createSpaceScene(camera) {
     earthGroup.add(sunGroup)
     centerGroup.add(earthGroup);
     earthGroup.add(issGroup);
+    issGroup.add(issLabelGroup);
 
     // Ambient Light
     const light = new THREE.AmbientLight(0x888888, debug ? 3.2 : 0.2);
@@ -32,10 +36,10 @@ function createSpaceScene(camera) {
     const earthGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS, 32, 32);
     const earthMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
     earth = new THREE.Mesh(earthGeometry, earthMaterial);
-    earthMaterial.map = THREE.ImageUtils.loadTexture('assets/img/earth_map.jpg');
+    earthMaterial.map = textureLoader.load('assets/img/earth_map.jpg');
     earthMaterial.map.minFilter = THREE.LinearFilter;
-    earthMaterial.bumpMap = THREE.ImageUtils.loadTexture('assets/img/earth_bump.jpg');
-    earthMaterial.specularMap = THREE.ImageUtils.loadTexture('assets/img/earth_spec.jpg');
+    earthMaterial.bumpMap = textureLoader.load('assets/img/earth_bump.jpg');
+    earthMaterial.specularMap = textureLoader.load('assets/img/earth_spec.jpg');
     earthMaterial.specular = new THREE.Color(0x050505);
     earthMaterial.shininess = 10;
     earth.castShadow = true;
@@ -53,9 +57,9 @@ function createSpaceScene(camera) {
 
     // Stars
     const starsGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS * 3, 32, 32);
-    const starsMaterial = new THREE.MeshBasicMaterial();
+    const starsMaterial = new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.9});
     const stars = new THREE.Mesh(starsGeometry, starsMaterial);
-    starsMaterial.map = THREE.ImageUtils.loadTexture('assets/img/galaxy_starfield.png');
+    starsMaterial.map = textureLoader.load('assets/img/galaxy_starfield.jpg');
     starsMaterial.side = THREE.BackSide;
     centerGroup.add(stars);
 
@@ -70,18 +74,28 @@ function createSpaceScene(camera) {
     });
 
     // ISS label
-    issLabel = new THREE.TextSprite({
-        fillStyle: '#FFFFFF',
-        fontFamily: 'Arial',
-        fontSize: 0,
-        text: [
-            'International Space Station',
-        ].join('\n'),
-    });
-    issGroup.add(issLabel);
+    const label = new THREE_Text2D.SpriteText2D("   International Space Station", {
+        align: THREE_Text2D.textAlign.left,
+        font: '40px Arial',
+        fillStyle: '#ffffff',
+        antialias: true
+    })
+    label.material.sizeAttenuation = false;
+    label.scale.set(0.0003, 0.0003, 1);
+    issLabelGroup.add(label);
+
+    // ISS marker
+    const markerTextureMap = textureLoader.load("assets/img/marker.png");
+    const markerMaterial = new THREE.SpriteMaterial({map: markerTextureMap, color: 0xffffff, sizeAttenuation: false});
+    const marker = new THREE.Sprite(markerMaterial);
+    marker.scale.set(0.01, 0.015, 1);
+    issLabelGroup.add(marker);
 
     // Init
     updateSpace(new Date());
+
+    controls.minDistance = 10;
+    controls.maxDistance = EARTH_RADIUS * 3;
 
     return scene;
 }
@@ -103,13 +117,9 @@ function updateSpace(date) {
     earthGroup.rotation.x = toRadians(-latitude + 90);
     earthGroup.rotation.y = toRadians(-longitude + 90);
 
-    // Set the absolute position in the iss group
+    // Set the absolute position and the rotation of the iss group
     issGroup.position.set(position.x, position.y, position.z);
-
-    // Update rotation of the ISS model
-    if (iss != null) {
-        iss.rotation.set(rotation.x, rotation.y, rotation.z);
-    }
+    issGroup.rotation.set(rotation.x, rotation.y, rotation.z);
 
     // Calculate sun position
     let {lng: sunLon, lat: sunLat} = getPositionOfSun(date);
@@ -119,14 +129,13 @@ function updateSpace(date) {
 
 function updateCameraAndControls(camera, controls) {
     let radius = controls.getRadius();
-    let hasFocusOnIss = radius < Math.max(-earth.position.y, EARTH_RADIUS);
+    let hasFocusOnIss = radius < Math.max(-earth.position.y, EARTH_RADIUS * 1.3);
+    let canSeeIss = radius < 10000;
 
-    controls.minDistance = 10;
-    controls.maxDistance = EARTH_RADIUS * 3;
     controls.zoomSpeed = radius < 200 || radius >= EARTH_RADIUS ? 1 : 8;
 
     // Label of the ISS
-    issLabel.fontSize = hasFocusOnIss ? 0 : 135000 - (EARTH_RADIUS * 3 - radius) / 91 + 10000;
+    issLabelGroup.visible = !canSeeIss;
 
     // Update near rendering distance
     updateNearDistance(camera, radius);
