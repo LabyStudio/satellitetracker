@@ -9,6 +9,7 @@ let issLabelGroup = new THREE.Object3D();
 let iss = null;
 let earth = null;
 let atmosphere = null;
+let moon = null;
 
 function createSpaceScene(camera, controls) {
     const textureLoader = new THREE.TextureLoader();
@@ -32,16 +33,22 @@ function createSpaceScene(camera, controls) {
     const reflectionLight = new THREE.DirectionalLight(0xffffff, 2.0);
     sunGroup.add(reflectionLight);
 
+    // Moon
+    const moonGeometry = new THREE.SphereBufferGeometry(MOON_RADIUS, 32, 32);
+    const moonMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
+    moon = new THREE.Mesh(moonGeometry, moonMaterial);
+    earthGroup.add(moon);
+
     // Add sun flare
-    let textureFlareLens = textureLoader.load( "assets/img/lensflares/lens_flare.png" );
-    let textureFlareSun = textureLoader.load( "assets/img/lensflares/sun_flare.png" );
+    let textureFlareLens = textureLoader.load("assets/img/lensflares/lens_flare.png");
+    let textureFlareSun = textureLoader.load("assets/img/lensflares/sun_flare.png");
     let lensflare = new THREE.Lensflare();
-    lensflare.addElement( new THREE.LensflareElement( textureFlareSun, 160, 0.0 ) );
-    lensflare.addElement( new THREE.LensflareElement( textureFlareLens, 60, 0.6 ) );
-    lensflare.addElement( new THREE.LensflareElement( textureFlareLens, 70, 0.7 ) );
-    lensflare.addElement( new THREE.LensflareElement( textureFlareLens, 120, 0.9 ) );
-    lensflare.addElement( new THREE.LensflareElement( textureFlareLens, 70, 1 ) );
-    reflectionLight.add( lensflare );
+    lensflare.addElement(new THREE.LensflareElement(textureFlareSun, 160, 0.0));
+    lensflare.addElement(new THREE.LensflareElement(textureFlareLens, 60, 0.6));
+    lensflare.addElement(new THREE.LensflareElement(textureFlareLens, 70, 0.7));
+    lensflare.addElement(new THREE.LensflareElement(textureFlareLens, 120, 0.9));
+    lensflare.addElement(new THREE.LensflareElement(textureFlareLens, 70, 1));
+    reflectionLight.add(lensflare);
 
     // Earth
     const earthGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS, 32, 32);
@@ -106,7 +113,7 @@ function createSpaceScene(camera, controls) {
     updateSpace(new Date());
 
     controls.minDistance = 10;
-    controls.maxDistance = EARTH_RADIUS * 3;
+    controls.maxDistance = EARTH_RADIUS * 8;
 
     return scene;
 }
@@ -133,9 +140,21 @@ function updateSpace(date) {
     issGroup.rotation.set(rotation.x, rotation.y, rotation.z);
 
     // Calculate sun position
-    let {lng: sunLon, lat: sunLat} = getPositionOfSun(date);
-    let sunPosition = latLonToVector3(sunLat, sunLon + 90, SUN_DISTANCE);
+    let {
+        lng: sunLonRad,
+        lat: sunLatRad
+    } = getPositionOfSun(date)
+    let sunPosition = latLonRadToVector3(sunLatRad, sunLonRad + toRadians(90), SUN_DISTANCE);
     sunGroup.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
+
+    // Calculate moon position
+    let {
+        longitude: moonLon,
+        latitude: moonLat,
+        distance: moonDistance
+    } = getMoonPosition(date);
+    let moonPosition = latLonRadToVector3(moonLat, moonLon + toRadians(90), moonDistance * 1000);
+    moon.position.set(moonPosition.x, moonPosition.y, moonPosition.z);
 }
 
 function updateCameraAndControls(camera, controls) {

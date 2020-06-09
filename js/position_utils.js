@@ -3,11 +3,22 @@ const EARTH_RADIUS = 6378137;
 const ATMOSPHERE_HEIGHT = 80000;
 const SUN_DISTANCE = 151840000000;
 const SUN_RADIUS = 696340000;
+const MOON_RADIUS = 1737100;
 
 // Sun
 const J2000_0 = 946728000000;
 const DOUBLE_PI = 2.0 * Math.PI;
 const MILLISECONDS_PER_CENTURY = 1000 * 3600 * 24 * 36525.0;
+
+
+// Moon
+const rad = Math.PI / 180;
+const e = rad * 23.4397; // obliquity of the Earth
+const dayMs = 1000 * 60 * 60 * 24,
+    J1970 = 2440588,
+    J2000 = 2451545;
+
+// ################ SUN ################
 
 function getPositionOfSun(date) {
     const sunPos = getEquatorialSunPosition(date);
@@ -33,8 +44,8 @@ function getEquatorialSunPosition(date) {
 }
 
 function getSunGroundPoint(time, sunPos) {
-    const lat = toDegrees(sunPos.decl);
-    const lng = toDegrees(sunPos.rectAsc - getGMST(time));
+    const lat = sunPos.decl;
+    const lng = sunPos.rectAsc - getGMST(time);
     return {lng, lat};
 }
 
@@ -61,6 +72,28 @@ function rev(angle) {
     return (angle - Math.floor(angle / DOUBLE_PI) * DOUBLE_PI);
 }
 
+// ################ MOON ################
+
+function getMoonPosition(date) { // geocentric ecliptic coordinates of the moon
+    const time = toDays(date);
+    let L = rad * (218.316 + 13.176396 * time), // ecliptic longitude
+        M = rad * (134.963 + 13.064993 * time), // mean anomaly
+        F = rad * (93.272 + 13.229350 * time),  // mean distance
+
+        longitude = L + rad * 6.289 * Math.sin(M), // longitude
+        latitude = rad * 5.128 * Math.sin(F),     // latitude
+        distance = 385001 - 20905 * Math.cos(M);  // distance to the moon in km
+
+    longitude = rightAscension(longitude, latitude);
+    latitude = declination(longitude, latitude);
+
+    return {
+        longitude, latitude, distance
+    };
+}
+
+// ################ ISS ################
+
 function getPositionAndRotationOfISS(date) {
     // A few moments before
     let prevDate = new Date(date.getTime() + 1000 * 60);
@@ -73,8 +106,8 @@ function getPositionAndRotationOfISS(date) {
     let totalHeight = EARTH_RADIUS + height * 1000;
 
     // Get current position and previous position
-    let position = latLonToVector3(latitude, longitude + 90, totalHeight);
-    let prevPosition = latLonToVector3(prevLatitude, prevLongitude + 90, totalHeight);
+    let position = latLonDegToVector3(latitude, longitude + 90, totalHeight);
+    let prevPosition = latLonDegToVector3(prevLatitude, prevLongitude + 90, totalHeight);
 
     // Create dummy object to use the lookAt function
     let dummyIss = new THREE.Object3D();
@@ -129,13 +162,11 @@ function getPositionOfISS(date) {
     return {latitude, longitude, height, velocity};
 }
 
-// https://gist.github.com/nicoptere/2f2571db4b454bb18cd9
-function latLonToVector3(lat, lng, height) {
-    let out = new THREE.Vector3();
+// ################ Utils ################
 
-    // To radians
-    lat = toRadians(lat);
-    lng = toRadians(lng);
+// https://gist.github.com/nicoptere/2f2571db4b454bb18cd9
+function latLonRadToVector3(lat, lng, height) {
+    let out = new THREE.Vector3();
 
     //flips the Y axis
     lat = Math.PI / 2 - lat;
@@ -148,6 +179,14 @@ function latLonToVector3(lat, lng, height) {
     );
 
     return out;
+}
+
+function latLonDegToVector3(lat, lng, height) {
+    // To radians
+    lat = toRadians(lat);
+    lng = toRadians(lng);
+
+    return latLonRadToVector3(lat, lng, height);
 }
 
 function toRadians(degrees) {
@@ -179,7 +218,6 @@ function getVector(yaw, pitch) {
     return new THREE.Vector3(-cosPitch * sinYaw, sinPitch, -cosPitch * cosYaw);
 }
 
-
 function lookAt(location, target) {
     let xDiff = target.x - location.x;
     let yDiff = target.y - location.y;
@@ -196,4 +234,24 @@ function lookAt(location, target) {
     }
 
     return getVector(yaw - 90, pitch);
+}
+
+function rightAscension(l, b) {
+    return Math.atan2(Math.sin(l) * Math.cos(e) - Math.tan(b) * Math.sin(e), Math.cos(l));
+}
+
+function declination(l, b) {
+    return Math.asin(Math.sin(b) * Math.cos(e) + Math.cos(b) * Math.sin(e) * Math.sin(l));
+}
+
+function toJulian(date) {
+    return date.valueOf() / dayMs - 0.5 + J1970;
+}
+
+function fromJulian(j) {
+    return new Date((j + 0.5 - J1970) * dayMs);
+}
+
+function toDays(date) {
+    return toJulian(date) - J2000;
 }
