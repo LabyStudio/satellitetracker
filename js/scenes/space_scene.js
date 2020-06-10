@@ -10,6 +10,7 @@ let iss = null;
 let earth = null;
 let atmosphere = null;
 let moon = null;
+let predictionLine = null;
 
 function createSpaceScene(camera, controls) {
     const textureLoader = new THREE.TextureLoader();
@@ -37,7 +38,7 @@ function createSpaceScene(camera, controls) {
     const moonGeometry = new THREE.SphereBufferGeometry(MOON_RADIUS, 32, 32);
     const moonMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
     moon = new THREE.Mesh(moonGeometry, moonMaterial);
-    earthGroup.add(moon);
+    centerGroup.add(moon);
 
     // Add sun flare
     let textureFlareLens = textureLoader.load("assets/img/lensflares/lens_flare.png");
@@ -106,8 +107,14 @@ function createSpaceScene(camera, controls) {
     const markerTextureMap = textureLoader.load("assets/img/marker.png");
     const markerMaterial = new THREE.SpriteMaterial({map: markerTextureMap, color: 0xffffff, sizeAttenuation: false});
     const marker = new THREE.Sprite(markerMaterial);
-    marker.scale.set(0.01, 0.015, 1);
+    marker.scale.set(0.01, 0.03, 1);
     issLabelGroup.add(marker);
+
+    // ISS prediction line
+    const predictionLineGeometry = new THREE.BufferGeometry();
+    const predictionLineMaterial = new THREE.LineBasicMaterial({color: 0xffffff});
+    predictionLine = new THREE.Line(predictionLineGeometry, predictionLineMaterial);
+    earthGroup.add(predictionLine);
 
     // Init
     updateSpace(new Date());
@@ -155,9 +162,10 @@ function updateSpace(date) {
     } = getMoonPosition(date);
     let moonPosition = latLonRadToVector3(moonLat, moonLon + toRadians(90), moonDistance * 1000);
     moon.position.set(moonPosition.x, moonPosition.y, moonPosition.z);
+
 }
 
-function updateCameraAndControls(camera, controls) {
+function updateCameraAndControls(camera, controls, time) {
     let radius = controls.getRadius();
     let hasFocusOnIss = radius < Math.max(-earth.position.y, EARTH_RADIUS * 1.3);
     let canSeeIss = radius < 10000;
@@ -175,11 +183,13 @@ function updateCameraAndControls(camera, controls) {
     }
 
     if (atmosphere != null) {
-        updateAtmosphere(camera, hasFocusOnIss);
+        updateAtmosphere(camera, controls, hasFocusOnIss, radius);
     }
+
+    updatePredictionLine(time, canSeeIss);
 }
 
-function updateAtmosphere(camera, hasFocusOnIss) {
+function updateAtmosphere(camera, controls, hasFocusOnIss, radius) {
     // The camera vector
     let cameraVector = new THREE.Vector3(camera.matrix.elements[8], camera.matrix.elements[9], camera.matrix.elements[10]);
 
@@ -192,6 +202,30 @@ function updateAtmosphere(camera, hasFocusOnIss) {
 
     // Looking straight to earth or over the horizon
     atmosphere.material.uniforms.viewVector.value = hasFocusOnIss ? fixedIssViewVector : cameraVector;
+    atmosphere.material.uniforms.c.value = hasFocusOnIss ? ATMOSPHERE_STRENGTH : Math.min(Math.max((ATMOSPHERE_STRENGTH - ATMOSPHERE_STRENGTH / controls.maxDistance * radius) * 3 - ATMOSPHERE_STRENGTH * 1.1, 0.0), ATMOSPHERE_STRENGTH);
+}
+
+function updatePredictionLine(time, canSeeIss) {
+    predictionLine.visible = !canSeeIss;
+
+    if(!canSeeIss) {
+        // Calculate prediction line
+        let points = [];
+        for (let i = 0; i <= ISS_ORBIT_TIME; i += 0.5) {
+            let timeToPredict = new Date(time.getTime() + 1000 * 60 * i);
+
+            // Get data at this prediction time
+            let {latitude: latitude, longitude: longitude, height: height} = getPositionOfISS(timeToPredict);
+
+            // Total height in meters
+            let totalHeight = EARTH_RADIUS + height * 1000;
+
+            // Get position at this prediction time
+            let position = latLonDegToVector3(latitude, longitude + 90, totalHeight);
+            points.push(position);
+        }
+        predictionLine.geometry.setFromPoints(points);
+    }
 }
 
 function updateCameraTarget(camera, controls, hasFocusOnIss) {
@@ -256,7 +290,7 @@ function createAtmosphereMaterial(callback) {
                     {
                         "c": {
                             type: "f",
-                            value: 0.6
+                            value: ATMOSPHERE_STRENGTH
                         },
                         "p": {
                             type: "f",

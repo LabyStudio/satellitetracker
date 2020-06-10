@@ -44,13 +44,13 @@ if (debug) {
 // Rendering
 const render = function () {
     // The current time for tracking (Super fast time speed in debug mode)
-    let time = debug ? new Date((new Date().getTime() - 1591446057000) * 500) : new Date();
+    let time = debug ? new Date((new Date().getTime() - 1591446057000) * 100) : new Date();
 
     // Next frame
     requestAnimationFrame(render);
 
     // Update the controls
-    updateCameraAndControls(camera, controls);
+    updateCameraAndControls(camera, controls, time);
     controls.update();
 
     if (debug) {
