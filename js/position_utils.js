@@ -97,15 +97,17 @@ function getMoonPosition(date) { // geocentric ecliptic coordinates of the moon
 // ################ ISS ################
 
 function getPositionAndRotationOfISS(date) {
+    let timeDifference = 1000 * 60;
+
     // A few moments before
-    let prevDate = new Date(date.getTime() + 1000 * 60);
+    let prevDate = new Date(date.getTime() + timeDifference);
 
     // Get current data and previous data
-    let {latitude: latitude, longitude: longitude, height: height} = getPositionOfISS(date);
+    let {latitude: latitude, longitude: longitude, height: heightInKm} = getPositionOfISS(date);
     let {latitude: prevLatitude, longitude: prevLongitude} = getPositionOfISS(prevDate);
 
     // Total height in meters
-    let totalHeight = EARTH_RADIUS + height * 1000;
+    let totalHeight = EARTH_RADIUS + heightInKm * 1000;
 
     // Get current position and previous position
     let position = latLonDegToVector3(latitude, longitude + 90, totalHeight);
@@ -121,7 +123,7 @@ function getPositionAndRotationOfISS(date) {
     let rotation = dummyIss.rotation;
 
     // Return the result
-    return {latitude, longitude, totalHeight, rotation, position};
+    return {latitude, longitude, totalHeight, heightInKm, rotation, position};
 }
 
 function getPositionOfISS(date) {
@@ -208,6 +210,10 @@ function getPitch(vector) {
     return Math.atan2(vector.y, distance);
 }
 
+function velocityToSpeed(velocity) {
+    return Math.sqrt(Math.pow(velocity.x, 2) + Math.pow(velocity.y, 2) + Math.pow(velocity.z, 2)) * 1000
+}
+
 function getVector(yaw, pitch) {
     const pitchRadians = toRadians(pitch);
     const yawRadians = toRadians(yaw);
@@ -256,4 +262,8 @@ function fromJulian(j) {
 
 function toDays(date) {
     return toJulian(date) - J2000;
+}
+
+function sigmoid(input) {
+    return (1 / (1 + Math.exp(-input * 2 + 4)));
 }

@@ -103,15 +103,18 @@ function createSpaceScene(camera, controls) {
     loader.load('assets/objects/ISS_stationary.glb', function (gltf) {
         issGroup.add(iss = gltf.scene);
         camera.updateProjectionMatrix();
+
+        // Finish initialization
+        initializationCompleted();
     }, function (xhr) {
     }, function (error) {
         console.error(error);
     });
 
     // ISS label
-    const label = new THREE_Text2D.SpriteText2D("   International Space Station", {
+    const label = new THREE_Text2D.SpriteText2D("     ISS (Zarya)", {
         align: THREE_Text2D.textAlign.left,
-        font: '40px Arial',
+        font: 'bold 40px Arial',
         fillStyle: '#ffffff',
         antialias: true
     })
@@ -123,7 +126,7 @@ function createSpaceScene(camera, controls) {
     const markerTextureMap = textureLoader.load("assets/img/marker.png");
     const markerMaterial = new THREE.SpriteMaterial({map: markerTextureMap, color: 0xffffff, sizeAttenuation: false});
     const marker = new THREE.Sprite(markerMaterial);
-    marker.scale.set(0.01, 0.03, 1);
+    marker.scale.set(0.02, 0.02, 1);
     issLabelGroup.add(marker);
 
     // ISS prediction line
@@ -138,6 +141,9 @@ function createSpaceScene(camera, controls) {
     controls.minDistance = 10;
     controls.maxDistance = EARTH_RADIUS * 8;
 
+    // ISS default view position
+    camera.position.set(20, 70, 100);
+
     return scene;
 }
 
@@ -147,6 +153,7 @@ function updateSpace(date) {
         latitude: latitude,
         longitude: longitude,
         totalHeight: totalHeight,
+        heightInKm: heightInKm,
         rotation: rotation,
         position: position
     } = getPositionAndRotationOfISS(date);

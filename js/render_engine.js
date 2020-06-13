@@ -2,26 +2,29 @@ const debug = false;
 const supportWebGL = !!WebGLRenderingContext && (!!document.createElement('canvas').getContext('experimental-webgl')
     || !!document.createElement('canvas').getContext('webgl'));
 
-// Create camera
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1 /* Updated in space_scene */, 10000000000000);
+let initialized = false;
+let initializeTime = null;
 
-// ISS default view position
-camera.position.set(20, 70, 100);
+// We will use 2D canvas element to render our HUD.
+const hudCanvas = document.createElement('canvas');
+
+// Create cameras
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1 /* Updated in space_scene */, 10000000000000);
+const cameraHUD = new THREE.OrthographicCamera(0, 0, 0, 0, 0, 30);
 
 // Setup renderer
 const canvasElement = document.getElementById("space-canvas");
 const renderer = supportWebGL ? new THREE.WebGLRenderer({
     canvas: canvasElement,
-    antialias: true,
-    preserveDrawingBuffer: true
+    antialias: true
 }) : new THREE.CanvasRenderer({
     canvas: canvasElement,
-    antialias: true,
-    preserveDrawingBuffer: true
+    antialias: true
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
+renderer.autoClear = false;
 renderer.setClearColor(0x000000);
 renderer.clear();
 
@@ -33,58 +36,30 @@ controls.dampingFactor = 0.06;
 controls.rotateSpeed = 0.08;
 
 // Create scenes
-const spaceScene = createSpaceScene(camera, controls);
-
-// Add debug
-if (debug) {
-    debugScene = createDebugScene(camera);
-    spaceScene.add(debugScene);
-}
-
-// Debug
-let mouseDown = false;
-let mouseVal = 0;
-document.body.onmousedown = function(e) {
-    if(e.button === 2) {
-        mouseDown = true;
-    }
-}
-document.body.onmouseup = function(e) {
-    if(e.button === 2) {
-        mouseDown = false;
-    }
-}
-document.body.onmousemove = function(e){
-    if(mouseDown) {
-        mouseVal = e.clientX;
-    }
-}
+const sceneSpace = createSpaceScene(camera, controls);
+let sceneHUD = createHUDScene(hudCanvas, cameraHUD);
 
 // Rendering
 const render = function () {
     // The current time for tracking (Super fast time speed in debug mode)
-    let time = debug ? new Date((new Date().getTime() - 1591446057000) * 100) : new Date();
-
-    // Debug
-    // time = new Date(time.getTime() + mouseVal * 1000 * 400);
+    let date = debug ? new Date((new Date().getTime() - 1591446057000) * 100) : new Date();
 
     // Next frame
     requestAnimationFrame(render);
 
     // Update the controls
-    updateCameraAndControls(camera, controls, time);
+    updateCameraAndControls(camera, controls, date);
     controls.update();
 
-    if (debug) {
-        // Locate debug scene in front of camera
-        updateDebug(debugScene, camera, time);
-    }
-
-    // Update the entire space
-    updateSpace(time);
+    // Update the scenes
+    updateSpace(date);
+    updateHUD(date);
 
     // Render scenes
-    renderer.render(spaceScene, camera);
+    if (initialized) {
+        renderer.render(sceneSpace, camera);
+    }
+    renderer.render(sceneHUD, cameraHUD);
 };
 
 // Start rendering
@@ -92,8 +67,21 @@ render();
 
 // On resize
 window.addEventListener('resize', onWindowResize, false);
+
 function onWindowResize() {
+    // Recreate Hud scene on resize
+    sceneHUD = createHUDScene(hudCanvas, cameraHUD);
+
+    // Adjust camera
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function initializationCompleted() {
+    // Trigger scene load before finishing the initialization
+    renderer.render(sceneSpace, camera);
+
+    initialized = true;
+    initializeTime = new Date().getTime();
 }
