@@ -57,16 +57,26 @@ function updateHUD(date) {
     context.clearRect(0, 0, width, height);
     hudTexture.needsUpdate = true;
 
-    if(initialized) {
-        // Get ISS data
-        let {latitude: latitude, longitude: longitude, height: heightInKm, velocity: velocity} = getPositionOfISS(date);
-        let speed = velocityToSpeed(velocity) * 3.6;
-
-        drawSpeedometer(100, height - 50, speed, 30000, "SPEED", "KM/H");
-        drawSpeedometer(280, height - 50, heightInKm, 460, "ALTITUDE", "KM");
+    if (initialized) {
+        drawTelemetry(0, height - 150, 500, 150, date);
     } else {
         drawText(width / 2, height / 2, "Loading space...", '#ffffff', 30, true, false);
     }
+}
+
+function drawTelemetry(x, y, width, height, date) {
+    // Get ISS data
+    let {latitude: latitude, longitude: longitude, height: heightInKm, velocity: velocity} = getPositionOfISS(date);
+    let speed = velocityToSpeed(velocity) * 3.6;
+
+    let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, 0.5)", "rgba(0,0,0, 0.2)");
+    let curveStartX = x + width * 0.6;
+
+    drawRect(x, y, curveStartX, y + height, gradient);
+    drawSpeedometerBackgroundCurve(curveStartX, y, width - curveStartX, height, gradient);
+
+    drawSpeedometer(x + 100, y + 100, speed, 30000, "SPEED", "KM/H");
+    drawSpeedometer(x + 280, y + 100, heightInKm, 460, "ALTITUDE", "KM");
 }
 
 function drawSpeedometer(x, y, value, maxValue, title, unit) {
@@ -97,7 +107,7 @@ function drawSpeedometer(x, y, value, maxValue, title, unit) {
     drawArc(x, y, radius, arcEnd - arcRedRange, arcEnd - arcRedRange + arcRedProgress, arcThickness, '#ffaaaa');
 
     // Draw start hook
-    drawArc(x, y, radius - 3, arcStart - 2, arcStart + 1, 13, '#ffffff');
+    drawArc(x, y, radius - 3, arcStart - 1, arcStart + 1, 12, '#ffffff');
 
     // Labels
     drawText(x, y - 35, title, '#999999', 12, true, true);
@@ -115,8 +125,50 @@ function drawArc(x, y, radius, degreeStart, degreeEnd, thickness, color) {
 }
 
 function drawText(x, y, string, color, size, centered, bold) {
-    context.font = (bold ? "bold" : "normal") + " " + size + "px Arial";
+    context.font = (bold ? "bold" : "normal") + " " + size + "px FoundryGridnik";
     context.fillStyle = color;
     context.textAlign = centered ? "center" : "left";
     context.fillText(string, x, y);
+}
+
+function drawRect(left, top, right, bottom, color, alpha = 1) {
+    context.fillStyle = color;
+    context.globalAlpha = alpha;
+    context.fillRect(left, top, right - left, bottom - top);
+    context.globalAlpha = alpha;
+}
+
+function getGradientTopBottom(x, y1, y2, topColor, bottomColor) {
+    const gradient = context.createLinearGradient(x, y1, x, y2);
+    gradient.addColorStop(0, topColor);
+    gradient.addColorStop(1, bottomColor);
+    return gradient;
+}
+
+function drawSpeedometerBackgroundCurve(x, y, width, height, color) {
+    context.fillStyle = color;
+    context.beginPath();
+    context.moveTo(x, y);
+
+    let x1 = x;
+    let y1 = y;
+    let x2 = x + width;
+    let y2 = y + height;
+    let ang1 = 0;
+    let ang2 = toRadians(90);
+
+    let len =  Math.hypot(x2-x1,y2-y1);
+    let ax1 = Math.cos(ang1) * len * (1/3);
+    let ay1 = Math.sin(ang1) * len * (1/3);
+    let ay2 = Math.sin(ang2) * len * (1/3);
+
+    context.bezierCurveTo(
+        x1 + ax1, y1 + ay1,
+        x2 - ax1, y2 - ay2,
+        x2, y2
+    );
+
+    context.lineTo(x, y + height);
+    context.closePath();
+    context.fill();
 }

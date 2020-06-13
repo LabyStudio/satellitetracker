@@ -1,2 +1,13 @@
-body { margin: 0; }
-canvas { display: block; }
+body {
+    margin: 0;
+    background-color: black;
+}
+
+canvas {
+    display: block;
+}
+
+@font-face {
+    font-family: FoundryGridnik;
+    src: url("../assets/fonts/foundrygridnik.otf") format("opentype");
+}
