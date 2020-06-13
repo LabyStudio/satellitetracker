@@ -11,6 +11,7 @@ let earth = null;
 let atmosphere = null;
 let moon = null;
 let predictionLine = null;
+let clouds = null;
 
 function createSpaceScene(camera, controls) {
     const textureLoader = new THREE.TextureLoader();
@@ -38,6 +39,7 @@ function createSpaceScene(camera, controls) {
     const moonGeometry = new THREE.SphereBufferGeometry(MOON_RADIUS, 32, 32);
     const moonMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
     moon = new THREE.Mesh(moonGeometry, moonMaterial);
+    moonMaterial.map = textureLoader.load('assets/img/moon_map.jpg');
     centerGroup.add(moon);
 
     // Add sun flare
@@ -52,7 +54,7 @@ function createSpaceScene(camera, controls) {
     reflectionLight.add(lensflare);
 
     // Earth
-    const earthGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS, 32, 32);
+    const earthGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS, 64, 64);
     const earthMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
     earth = new THREE.Mesh(earthGeometry, earthMaterial);
     earthMaterial.map = textureLoader.load('assets/img/earth_map.jpg');
@@ -64,6 +66,20 @@ function createSpaceScene(camera, controls) {
     earth.castShadow = true;
     earth.receiveShadow = true;
     earthGroup.add(earth);
+
+    // Clouds
+    const cloudsGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS + CLOUD_HEIGHT, 64, 64);
+    const cloudsMaterial = new THREE.MeshPhongMaterial({
+        color: 0xffffff,
+        transparent: true,
+        depthWrite: false,
+        opacity: 0.8
+    });
+    clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+    cloudsMaterial.map = textureLoader.load('assets/img/cloud_map.png');
+    clouds.castShadow = true;
+    clouds.receiveShadow = true;
+    earthGroup.add(clouds);
 
     // Atmosphere
     const atmosphereGeometry = new THREE.SphereGeometry(EARTH_RADIUS + ATMOSPHERE_HEIGHT, 256, 256)
@@ -146,6 +162,10 @@ function updateSpace(date) {
     issGroup.position.set(position.x, position.y, position.z);
     issGroup.rotation.set(rotation.x, rotation.y, rotation.z);
 
+    // Cloud movement
+    clouds.rotation.x = -toRadians(-latitude + 90);
+    clouds.rotation.y = -toRadians(-longitude + 90);
+
     // Calculate sun position
     let {
         lng: sunLonRad,
@@ -162,7 +182,6 @@ function updateSpace(date) {
     } = getMoonPosition(date);
     let moonPosition = latLonRadToVector3(moonLat, moonLon + toRadians(90), moonDistance * 1000);
     moon.position.set(moonPosition.x, moonPosition.y, moonPosition.z);
-
 }
 
 function updateCameraAndControls(camera, controls, time) {
@@ -208,7 +227,7 @@ function updateAtmosphere(camera, controls, hasFocusOnIss, radius) {
 function updatePredictionLine(time, canSeeIss) {
     predictionLine.visible = !canSeeIss;
 
-    if(!canSeeIss) {
+    if (!canSeeIss) {
         // Calculate prediction line
         let points = [];
         for (let i = 0; i <= ISS_ORBIT_TIME; i += 0.5) {
@@ -270,7 +289,7 @@ function updateCameraTarget(camera, controls, hasFocusOnIss) {
 
 function updateNearDistance(camera, radius) {
     let prevCameraNear = camera.near;
-    camera.near = radius < 10000 ? 1 : 100000;
+    camera.near = radius < 10000 ? 3 : 100000;
 
     if (prevCameraNear !== camera.near) {
         camera.updateProjectionMatrix();

@@ -41,10 +41,32 @@ if (debug) {
     spaceScene.add(debugScene);
 }
 
+// Debug
+let mouseDown = false;
+let mouseVal = 0;
+document.body.onmousedown = function(e) {
+    if(e.button === 2) {
+        mouseDown = true;
+    }
+}
+document.body.onmouseup = function(e) {
+    if(e.button === 2) {
+        mouseDown = false;
+    }
+}
+document.body.onmousemove = function(e){
+    if(mouseDown) {
+        mouseVal = e.clientX;
+    }
+}
+
 // Rendering
 const render = function () {
     // The current time for tracking (Super fast time speed in debug mode)
     let time = debug ? new Date((new Date().getTime() - 1591446057000) * 100) : new Date();
+
+    // Debug
+    // time = new Date(time.getTime() + mouseVal * 1000 * 400);
 
     // Next frame
     requestAnimationFrame(render);
