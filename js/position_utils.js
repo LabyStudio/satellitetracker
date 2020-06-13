@@ -20,6 +20,9 @@ const dayMs = 1000 * 60 * 60 * 24,
     J1970 = 2440588,
     J2000 = 2451545;
 
+// ISS
+let satelliteRecord = getSatelliteRecord(25544);
+
 // ################ SUN ################
 
 function getPositionOfSun(date) {
@@ -126,14 +129,24 @@ function getPositionAndRotationOfISS(date) {
     return {latitude, longitude, totalHeight, heightInKm, rotation, position};
 }
 
-function getPositionOfISS(date) {
-    // Sample TLE
-    const tleLine1 = '1 25544U 98067A   20152.78387051  .00000343  00000-0  14210-4 0  9991',
-        tleLine2 = '2 25544  51.6445  69.6558 0002272  14.4249  80.9342 15.49401303229473';
+// https://celestrak.com/satcat/tle.php?CATNR=25544
+// https://celestrak.com/pub/TLE/catalog.txt
+function getTLE(id) {
+    return $.ajax({
+        type: "GET",
+        url: "assets/tle/" + id + ".txt",
+        async: false
+    }).responseText;
+}
 
+function getSatelliteRecord(id) {
+    let tle = getTLE(id).split("\n");
+    return satellite.twoline2satrec(tle[1], tle[2]);
+}
+
+function getPositionOfISS(date) {
     // Initialize a satellite record
-    const satrec = satellite.twoline2satrec(tleLine1, tleLine2);
-    const positionAndVelocity = satellite.propagate(satrec, date);
+    const positionAndVelocity = satellite.propagate(satelliteRecord, date);
 
     // The position_velocity result is a key-value pair of ECI coordinates.
     // These are the base results from which all other coordinates are derived.
