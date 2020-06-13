@@ -107,6 +107,7 @@ function createSpaceScene(camera, controls) {
         // Finish initialization
         initializationCompleted();
     }, function (xhr) {
+        initializePercentage = 100 / xhr.total * xhr.loaded;
     }, function (error) {
         console.error(error);
     });

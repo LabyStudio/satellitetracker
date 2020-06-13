@@ -60,8 +60,17 @@ function updateHUD(date) {
     if (initialized) {
         drawTelemetry(0, height - 150, 500, 150, date);
     } else {
-        drawText(width / 2, height / 2, "Loading space...", '#ffffff', 30, true, false);
+        let status = (initializePercentage < 100 ? "Loading resources " + Math.round(initializePercentage) + "%" : "Initializing...");
+        drawText(width / 2, height / 2, status, '#ffffff', 30, true, false);
+        drawProgressbar(width / 2 - 100, height / 2 + 30, 200, 3, initializePercentage);
     }
+}
+
+function drawProgressbar(x, y, width, height, percentage) {
+    let progress = width / 100 * percentage;
+
+    drawRect(x + progress, y, x + width, y + height, '#444444')
+    drawRect(x, y, x + progress, y + height, '#aa0000')
 }
 
 function drawTelemetry(x, y, width, height, date) {

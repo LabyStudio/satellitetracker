@@ -3,6 +3,7 @@ const supportWebGL = !!WebGLRenderingContext && (!!document.createElement('canva
     || !!document.createElement('canvas').getContext('webgl'));
 
 let initialized = false;
+let initializePercentage = 0;
 let initializeTime = null;
 
 // We will use 2D canvas element to render our HUD.
@@ -83,5 +84,6 @@ function initializationCompleted() {
     renderer.render(sceneSpace, camera);
 
     initialized = true;
+    initializePercentage = 100;
     initializeTime = new Date().getTime();
 }
