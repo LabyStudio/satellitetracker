@@ -2,6 +2,8 @@ let sunGroup = new THREE.Object3D();
 let earthGroup = new THREE.Object3D();
 let centerGroup = new THREE.Object3D();
 
+let sunForeground = null;
+
 let earth = null;
 let atmosphere = null;
 let moon = null;
@@ -17,20 +19,25 @@ function createSpaceScene(camera, controls) {
     textureLoader.crossOrigin = "";
 
     // Create space scene
-    const scene = new THREE.Scene();
+    const background = new THREE.Scene();
+    const foreground = new THREE.Scene();
 
     // Bindings
-    scene.add(centerGroup);
+    background.add(centerGroup);
     earthGroup.add(sunGroup)
     centerGroup.add(earthGroup);
 
     // Ambient Light
     const nightLight = new THREE.AmbientLight(0x888888, debug ? 3.2 : 0.2);
-    scene.add(nightLight);
+    background.add(nightLight);
+    // Copy night light to foreground for lightning
+    foreground.add(nightLight.clone());
 
     // Sun light
     const reflectionLight = new THREE.DirectionalLight(0xffffff, 2.0);
     sunGroup.add(reflectionLight);
+    // Copy sun to foreground for lightning
+    foreground.add(sunForeground = reflectionLight.clone());
 
     // Moon
     const moonGeometry = new THREE.SphereBufferGeometry(MOON_RADIUS, 32, 32);
@@ -98,14 +105,11 @@ function createSpaceScene(camera, controls) {
 
     // Add satellite model to earth group
     Object.values(satellites).forEach(satellite => {
-        satellite.model.addModelsTo(earthGroup);
+        satellite.model.addModelsTo(earthGroup, foreground);
     });
 
-    clouds.depthWrite = false;
-    clouds.depthTest = false;
-
     // Init
-    updateSpace(new Date());
+    updateSpace(new Date(), null);
 
     controls.minDistance = 10;
     controls.maxDistance = EARTH_RADIUS * 8;
@@ -113,10 +117,10 @@ function createSpaceScene(camera, controls) {
     // ISS default view position
     camera.position.set(20, 70, 100);
 
-    return scene;
+    return {background, foreground};
 }
 
-function updateSpace(date) {
+function updateSpace(date, layers) {
     let cameraDistance = controls.getRadius();
     let canSeeFocusedSatellite = cameraDistance < 10000;
 
@@ -126,16 +130,15 @@ function updateSpace(date) {
     });
 
     // Focus a specific satellite with the camera
-    focusSatellite(date, getFocusedSatellite(), cameraDistance, canSeeFocusedSatellite);
-
-    // Cloud movement
-    // clouds.rotation.x = -toRadians(0);
-    // clouds.rotation.y = -toRadians(0);
+    focusSatellite(date, getFocusedSatellite(), cameraDistance, canSeeFocusedSatellite, layers);
 
     // Calculate sun position
     let sunState = getPositionOfSun(date);
     let sunPosition = latLonRadToVector3(sunState.lat, sunState.lng + toRadians(90), SUN_DISTANCE);
     sunGroup.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
+
+    // Update sun position in foreground
+    sunForeground.position.copy(sunGroup.position);
 
     // Calculate moon position
     let moonState = getMoonPosition(date);
@@ -143,7 +146,7 @@ function updateSpace(date) {
     moon.position.set(moonPosition.x, moonPosition.y, moonPosition.z);
 }
 
-function focusSatellite(date, satellite, cameraDistance, canSeeFocusedSatellite) {
+function focusSatellite(date, satellite, cameraDistance, canSeeFocusedSatellite, layers) {
     // Get data
     let advancedState = satellite.getAdvancedStateAtTime(date);
 
@@ -154,33 +157,25 @@ function focusSatellite(date, satellite, cameraDistance, canSeeFocusedSatellite)
     earthGroup.rotation.x = toRadians(-advancedState.state.latitude + 90);
     earthGroup.rotation.y = toRadians(-advancedState.state.longitude + 90);
 
+    // Sync position of satellites in foreground with the background
+    if(layers !== null) {
+        layers.foreground.position.copy(centerGroup.position);
+        layers.foreground.rotation.copy(earthGroup.rotation);
+    }
+
+    // Cloud movement
+    clouds.rotation.x = -earthGroup.rotation.x;
+    clouds.rotation.y = -earthGroup.rotation.y;
+
     // Update controls
     controls.zoomSpeed = cameraDistance < 200 || cameraDistance >= EARTH_RADIUS ? 1 : 8;
     controls.target = new THREE.Vector3(0, focusedEarth ? centerGroup.position.y : 0, 0);
 
-    updateNearDistance(canSeeFocusedSatellite);
-    updateBumpScale(cameraDistance);
-    updateAtmosphere(cameraDistance);
-}
-
-function updateNearDistance(canSeeFocusedSatellite) {
-    let prevCameraNear = camera.near;
-    camera.near = canSeeFocusedSatellite ? 3 : 100000;
-
-    if (prevCameraNear !== camera.near) {
-        camera.updateProjectionMatrix();
-    }
-}
-
-function updateBumpScale(cameraDistance) {
-    let prevBumpScale = earth.material.bumpScale;
+    // Update bump scale of earth
     earth.material.bumpScale = cameraDistance < EARTH_RADIUS ? 1000 : 10000;
 
-    if (prevBumpScale !== earth.material.bumpScale) {
-        camera.updateProjectionMatrix();
-    }
+    updateAtmosphere(cameraDistance);
 }
-
 
 function updateAtmosphere(cameraDistance) {
     if (atmosphere == null)

@@ -37,7 +37,7 @@ controls.dampingFactor = 0.06;
 controls.rotateSpeed = 0.08;
 
 // Create scenes
-const sceneSpace = createSpaceScene(camera, controls);
+let layers = createSpaceScene(camera, controls);
 let sceneHUD = createHUDScene(hudCanvas, cameraHUD);
 
 // Rendering
@@ -52,12 +52,22 @@ const render = function () {
     controls.update();
 
     // Update the scenes
-    updateSpace(date);
+    updateSpace(date, layers);
     updateHUD(date);
 
     // Render scenes
     if (initialized) {
-        renderer.render(sceneSpace, camera);
+        // Render background
+        camera.near = 70000;
+        camera.updateProjectionMatrix();
+        renderer.render(layers.background, camera);
+
+        renderer.clearDepth();
+
+        // Render foreground
+        camera.near = 1;
+        camera.updateProjectionMatrix();
+        renderer.render(layers.foreground, camera);
     }
 
     renderer.render(sceneHUD, cameraHUD);
@@ -81,7 +91,8 @@ function onWindowResize() {
 
 function initializationCompleted() {
     // Trigger scene load before finishing the initialization
-    renderer.render(sceneSpace, camera);
+    renderer.render(layers.background, camera);
+    renderer.render(layers.foreground, camera);
 
     initialized = true;
     initializePercentage = 100;

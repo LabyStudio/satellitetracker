@@ -1,5 +1,5 @@
 let satellites = [];
-let focusedEarth = false;
+let focusedEarth = true;
 
 function createSatellites() {
     // Create satellites

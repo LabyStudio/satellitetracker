@@ -146,11 +146,11 @@ class SatelliteModel {
 
         // Scene group
         this.label = new THREE.Object3D();
-        this.group = new THREE.Object3D();
+        this.model = new THREE.Object3D();
 
         // Load the model
         gltfLoader.load('assets/models/' + satellite.id + '.glb', function (gltf) {
-            instance.group.add(gltf.scene);
+            instance.model.add(gltf.scene);
 
             // Report that the model was loaded
             report(true, 100);
@@ -196,9 +196,13 @@ class SatelliteModel {
         // Get data
         let advancedState = this.satellite.getAdvancedStateAtTime(date);
 
-        // Set the absolute position and the rotation of the iss group
-        this.group.position.set(advancedState.position.x, advancedState.position.y, advancedState.position.z);
-        this.group.rotation.set(advancedState.rotation.x, advancedState.rotation.y, advancedState.rotation.z);
+        // Set the absolute position and the rotation of the label
+        this.label.position.set(advancedState.position.x, advancedState.position.y, advancedState.position.z);
+        this.label.rotation.set(advancedState.rotation.x, advancedState.rotation.y, advancedState.rotation.z);
+
+        // Apply the absolute position and the rotation to the model
+        this.model.position.copy(this.label.position);
+        this.model.rotation.copy(this.label.rotation);
 
         // Visible range of the focused satellite
         this.predictionLine.visible = showLabels;
@@ -221,10 +225,9 @@ class SatelliteModel {
         }
     }
 
-    addModelsTo(parentGroup) {
-        this.group.add(this.label);
-
-        parentGroup.add(this.group);
+    addModelsTo(parentGroup, foreground) {
+        foreground.add(this.model);
+        parentGroup.add(this.label);
         parentGroup.add(this.predictionLine);
     }
 }
