@@ -74,9 +74,7 @@ function drawProgressbar(x, y, width, height, percentage) {
 }
 
 function drawTelemetry(x, y, width, height, date) {
-    // Get ISS data
-    let {latitude: latitude, longitude: longitude, height: heightInKm, velocity: velocity} = getPositionOfISS(date);
-    let speed = velocityToSpeed(velocity) * 3.6;
+    let state = targetSatellite.getStateAtTime(date);
 
     let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, 0.5)", "rgba(0,0,0, 0.2)");
     let curveStartX = x + width * 0.6;
@@ -84,8 +82,8 @@ function drawTelemetry(x, y, width, height, date) {
     drawRect(x, y, curveStartX, y + height, gradient);
     drawSpeedometerBackgroundCurve(curveStartX, y, width - curveStartX, height, gradient);
 
-    drawSpeedometer(x + 100, y + 100, speed, 30000, "SPEED", "KM/H");
-    drawSpeedometer(x + 280, y + 100, heightInKm, 460, "ALTITUDE", "KM");
+    drawSpeedometer(x + 100, y + 100, state.getSpeed(), 30000, "SPEED", "KM/H");
+    drawSpeedometer(x + 280, y + 100, state.altitude, 460, "ALTITUDE", "KM");
 }
 
 function drawSpeedometer(x, y, value, maxValue, title, unit) {
@@ -166,10 +164,10 @@ function drawSpeedometerBackgroundCurve(x, y, width, height, color) {
     let ang1 = 0;
     let ang2 = toRadians(90);
 
-    let len =  Math.hypot(x2-x1,y2-y1);
-    let ax1 = Math.cos(ang1) * len * (1/3);
-    let ay1 = Math.sin(ang1) * len * (1/3);
-    let ay2 = Math.sin(ang2) * len * (1/3);
+    let len = Math.hypot(x2 - x1, y2 - y1);
+    let ax1 = Math.cos(ang1) * len * (1 / 3);
+    let ay1 = Math.sin(ang1) * len * (1 / 3);
+    let ay2 = Math.sin(ang2) * len * (1 / 3);
 
     context.bezierCurveTo(
         x1 + ax1, y1 + ay1,

@@ -43,7 +43,7 @@ let sceneHUD = createHUDScene(hudCanvas, cameraHUD);
 // Rendering
 const render = function () {
     // The current time for tracking (Super fast time speed in debug mode)
-    let date = debug ? new Date((new Date().getTime() - 1591446057000) * 100) : new Date();
+    let date = debug ? new Date((new Date().getTime() - 1592094998875) * 100) : new Date();
 
     // Next frame
     requestAnimationFrame(render);

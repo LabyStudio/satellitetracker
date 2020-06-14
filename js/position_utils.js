@@ -5,7 +5,7 @@ const SUN_DISTANCE = 151840000000;
 const SUN_RADIUS = 696340000;
 const MOON_RADIUS = 1737100;
 const ATMOSPHERE_STRENGTH = 0.6;
-const ISS_ORBIT_TIME = 93;
+const ISS_ORBIT_TIME = 92;
 const CLOUD_HEIGHT = 18288;
 
 // Sun
@@ -20,11 +20,13 @@ const dayMs = 1000 * 60 * 60 * 24,
     J1970 = 2440588,
     J2000 = 2451545;
 
-// ISS
-let satelliteRecord = getSatelliteRecord(25544);
-
 // ################ SUN ################
 
+/**
+ *
+ * @param date
+ * @returns {{lng: number, lat: number}}
+ */
 function getPositionOfSun(date) {
     const sunPos = getEquatorialSunPosition(date);
     return getSunGroundPoint(date.getTime(), sunPos);
@@ -97,87 +99,6 @@ function getMoonPosition(date) { // geocentric ecliptic coordinates of the moon
     };
 }
 
-// ################ ISS ################
-
-function getPositionAndRotationOfISS(date) {
-    let timeDifference = 1000 * 60;
-
-    // A few moments before
-    let prevDate = new Date(date.getTime() + timeDifference);
-
-    // Get current data and previous data
-    let {latitude: latitude, longitude: longitude, height: heightInKm} = getPositionOfISS(date);
-    let {latitude: prevLatitude, longitude: prevLongitude} = getPositionOfISS(prevDate);
-
-    // Total height in meters
-    let totalHeight = EARTH_RADIUS + heightInKm * 1000;
-
-    // Get current position and previous position
-    let position = latLonDegToVector3(latitude, longitude + 90, totalHeight);
-    let prevPosition = latLonDegToVector3(prevLatitude, prevLongitude + 90, totalHeight);
-
-    // Create dummy object to use the lookAt function
-    let dummyIss = new THREE.Object3D();
-    dummyIss.position.set(position.x, position.y, position.z);
-    dummyIss.up = position;
-    dummyIss.lookAt(prevPosition);
-
-    // Extract the rotation of the iss
-    let rotation = dummyIss.rotation;
-
-    // Return the result
-    return {latitude, longitude, totalHeight, heightInKm, rotation, position};
-}
-
-// https://celestrak.com/satcat/tle.php?CATNR=25544
-// https://celestrak.com/pub/TLE/catalog.txt
-function getTLE(id) {
-    return $.ajax({
-        type: "GET",
-        url: "assets/tle/" + id + ".txt",
-        async: false
-    }).responseText;
-}
-
-function getSatelliteRecord(id) {
-    let tle = getTLE(id).split("\n");
-    return satellite.twoline2satrec(tle[1], tle[2]);
-}
-
-function getPositionOfISS(date) {
-    // Initialize a satellite record
-    const positionAndVelocity = satellite.propagate(satelliteRecord, date);
-
-    // The position_velocity result is a key-value pair of ECI coordinates.
-    // These are the base results from which all other coordinates are derived.
-    const positionEci = positionAndVelocity.position,
-        velocity = positionAndVelocity.velocity;
-
-    // You will need GMST for some of the coordinate transforms.
-    // http://en.wikipedia.org/wiki/Sidereal_time#Definition
-    const gmst = satellite.gstime(new Date());
-
-    // You can get ECF, Geodetic, Look Angles, and Doppler Factor.
-    const positionEcf = satellite.eciToEcf(positionEci, gmst),
-        positionGd = satellite.eciToGeodetic(positionEci, gmst);
-
-    // The coordinates are all stored in key-value pairs.
-    // ECI and ECF are accessed by `x`, `y`, `z` properties.
-    const satelliteX = positionEci.x,
-        satelliteY = positionEci.y,
-        satelliteZ = positionEci.z;
-
-    // Geodetic coords are accessed via `longitude`, `latitude`, `height`.
-    let latitude = positionGd.latitude,
-        longitude = positionGd.longitude,
-        height = positionGd.height;
-
-    //  Convert the RADIANS to DEGREES
-    latitude = satellite.degreesLat(latitude);
-    longitude = satellite.degreesLong(longitude);
-
-    return {latitude, longitude, height, velocity};
-}
 
 // ################ Utils ################
 
@@ -255,6 +176,17 @@ function lookAt(location, target) {
     }
 
     return getVector(yaw - 90, pitch);
+}
+
+function lookAtThreeJs(location, target) {
+    // Create dummy object to use the lookAt function
+    let dummy = new THREE.Object3D();
+    dummy.position.set(location.x, location.y, location.z);
+    dummy.up = location;
+    dummy.lookAt(target);
+
+    // Extract the rotation of the dummy object
+    return dummy.rotation;
 }
 
 function rightAscension(l, b) {

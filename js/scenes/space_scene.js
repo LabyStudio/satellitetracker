@@ -13,6 +13,8 @@ let moon = null;
 let predictionLine = null;
 let clouds = null;
 
+let targetSatellite = new Satellite(25544);
+
 function createSpaceScene(camera, controls) {
     const textureLoader = new THREE.TextureLoader();
     textureLoader.crossOrigin = "";
@@ -150,45 +152,31 @@ function createSpaceScene(camera, controls) {
 
 function updateSpace(date) {
     // Get ISS data
-    let {
-        latitude: latitude,
-        longitude: longitude,
-        totalHeight: totalHeight,
-        heightInKm: heightInKm,
-        rotation: rotation,
-        position: position
-    } = getPositionAndRotationOfISS(date);
+    let advancedState = targetSatellite.getAdvancedStateAtTime(date);
 
     // Update the position everything inside of the earth container
-    centerGroup.position.set(0, -totalHeight, 0);
+    centerGroup.position.set(0, -advancedState.state.getDistanceToEarthCenter(), 0);
 
     // Rotate the earth with the ISS position to the top
-    earthGroup.rotation.x = toRadians(-latitude + 90);
-    earthGroup.rotation.y = toRadians(-longitude + 90);
+    earthGroup.rotation.x = toRadians(-advancedState.state.latitude + 90);
+    earthGroup.rotation.y = toRadians(-advancedState.state.longitude + 90);
 
     // Set the absolute position and the rotation of the iss group
-    issGroup.position.set(position.x, position.y, position.z);
-    issGroup.rotation.set(rotation.x, rotation.y, rotation.z);
+    issGroup.position.set(advancedState.position.x, advancedState.position.y, advancedState.position.z);
+    issGroup.rotation.set(advancedState.rotation.x, advancedState.rotation.y, advancedState.rotation.z);
 
     // Cloud movement
-    clouds.rotation.x = -toRadians(-latitude + 90);
-    clouds.rotation.y = -toRadians(-longitude + 90);
+    clouds.rotation.x = -toRadians(-advancedState.state.latitude + 90);
+    clouds.rotation.y = -toRadians(-advancedState.state.longitude + 90);
 
     // Calculate sun position
-    let {
-        lng: sunLonRad,
-        lat: sunLatRad
-    } = getPositionOfSun(date)
-    let sunPosition = latLonRadToVector3(sunLatRad, sunLonRad + toRadians(90), SUN_DISTANCE);
+    let sunState = getPositionOfSun(date);
+    let sunPosition = latLonRadToVector3(sunState.lat, sunState.lng + toRadians(90), SUN_DISTANCE);
     sunGroup.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
 
     // Calculate moon position
-    let {
-        longitude: moonLon,
-        latitude: moonLat,
-        distance: moonDistance
-    } = getMoonPosition(date);
-    let moonPosition = latLonRadToVector3(moonLat, moonLon + toRadians(90), moonDistance * 1000);
+    let moonState = getMoonPosition(date);
+    let moonPosition = latLonRadToVector3(moonState.latitude, moonState.longitude + toRadians(90), moonState.distance * 1000);
     moon.position.set(moonPosition.x, moonPosition.y, moonPosition.z);
 }
 
@@ -242,13 +230,10 @@ function updatePredictionLine(time, canSeeIss) {
             let timeToPredict = new Date(time.getTime() + 1000 * 60 * i);
 
             // Get data at this prediction time
-            let {latitude: latitude, longitude: longitude, height: height} = getPositionOfISS(timeToPredict);
-
-            // Total height in meters
-            let totalHeight = EARTH_RADIUS + height * 1000;
+            let state = targetSatellite.getStateAtTime(timeToPredict);
 
             // Get position at this prediction time
-            let position = latLonDegToVector3(latitude, longitude + 90, totalHeight);
+            let position = latLonDegToVector3(state.latitude, state.longitude + 90, state.getDistanceToEarthCenter());
             points.push(position);
         }
         predictionLine.geometry.setFromPoints(points);
