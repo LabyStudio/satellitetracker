@@ -1,22 +1,19 @@
-let cameraState = 0;
-
 let sunGroup = new THREE.Object3D();
 let earthGroup = new THREE.Object3D();
 let centerGroup = new THREE.Object3D();
-let issGroup = new THREE.Object3D();
-let issLabelGroup = new THREE.Object3D();
 
-let iss = null;
 let earth = null;
 let atmosphere = null;
 let moon = null;
-let predictionLine = null;
 let clouds = null;
 
-let targetSatellite = new Satellite(25544);
+// Loaders
+const textureLoader = new THREE.TextureLoader();
+const gltfLoader = new THREE.GLTFLoader();
+
+createSatellites();
 
 function createSpaceScene(camera, controls) {
-    const textureLoader = new THREE.TextureLoader();
     textureLoader.crossOrigin = "";
 
     // Create space scene
@@ -26,8 +23,6 @@ function createSpaceScene(camera, controls) {
     scene.add(centerGroup);
     earthGroup.add(sunGroup)
     centerGroup.add(earthGroup);
-    earthGroup.add(issGroup);
-    issGroup.add(issLabelGroup);
 
     // Ambient Light
     const nightLight = new THREE.AmbientLight(0x888888, debug ? 3.2 : 0.2);
@@ -65,6 +60,8 @@ function createSpaceScene(camera, controls) {
     earthMaterial.specularMap = textureLoader.load('assets/img/earth_spec.jpg');
     earthMaterial.specular = new THREE.Color(0x050505);
     earthMaterial.shininess = 10;
+    earthMaterial.polygonOffset = true;
+    earthMaterial.polygonOffsetFactor = 2;
     earth.castShadow = true;
     earth.receiveShadow = true;
     earthGroup.add(earth);
@@ -74,7 +71,6 @@ function createSpaceScene(camera, controls) {
     const cloudsMaterial = new THREE.MeshPhongMaterial({
         color: 0xffffff,
         transparent: true,
-        depthWrite: false,
         opacity: 0.8
     });
     clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
@@ -100,43 +96,13 @@ function createSpaceScene(camera, controls) {
     starsMaterial.side = THREE.BackSide;
     centerGroup.add(stars);
 
-    // ISS
-    const loader = new THREE.GLTFLoader();
-    loader.load('assets/objects/ISS_stationary.glb', function (gltf) {
-        issGroup.add(iss = gltf.scene);
-        camera.updateProjectionMatrix();
-
-        // Finish initialization
-        initializationCompleted();
-    }, function (xhr) {
-        initializePercentage = 100 / xhr.total * xhr.loaded;
-    }, function (error) {
-        console.error(error);
+    // Add satellite model to earth group
+    Object.values(satellites).forEach(satellite => {
+        satellite.model.addModelsTo(earthGroup);
     });
 
-    // ISS label
-    const label = new THREE_Text2D.SpriteText2D("     ISS (Zarya)", {
-        align: THREE_Text2D.textAlign.left,
-        font: 'bold 40px Arial',
-        fillStyle: '#ffffff',
-        antialias: true
-    })
-    label.material.sizeAttenuation = false;
-    label.scale.set(0.0003, 0.0003, 1);
-    issLabelGroup.add(label);
-
-    // ISS marker
-    const markerTextureMap = textureLoader.load("assets/img/marker.png");
-    const markerMaterial = new THREE.SpriteMaterial({map: markerTextureMap, color: 0xffffff, sizeAttenuation: false});
-    const marker = new THREE.Sprite(markerMaterial);
-    marker.scale.set(0.02, 0.02, 1);
-    issLabelGroup.add(marker);
-
-    // ISS prediction line
-    const predictionLineGeometry = new THREE.BufferGeometry();
-    const predictionLineMaterial = new THREE.LineBasicMaterial({color: 0xffffff});
-    predictionLine = new THREE.Line(predictionLineGeometry, predictionLineMaterial);
-    earthGroup.add(predictionLine);
+    clouds.depthWrite = false;
+    clouds.depthTest = false;
 
     // Init
     updateSpace(new Date());
@@ -151,23 +117,20 @@ function createSpaceScene(camera, controls) {
 }
 
 function updateSpace(date) {
-    // Get ISS data
-    let advancedState = targetSatellite.getAdvancedStateAtTime(date);
+    let cameraDistance = controls.getRadius();
+    let canSeeFocusedSatellite = cameraDistance < 10000;
 
-    // Update the position everything inside of the earth container
-    centerGroup.position.set(0, -advancedState.state.getDistanceToEarthCenter(), 0);
+    // Update all satellite positions
+    Object.values(satellites).forEach(satellite => {
+        satellite.model.update(date, !canSeeFocusedSatellite);
+    });
 
-    // Rotate the earth with the ISS position to the top
-    earthGroup.rotation.x = toRadians(-advancedState.state.latitude + 90);
-    earthGroup.rotation.y = toRadians(-advancedState.state.longitude + 90);
-
-    // Set the absolute position and the rotation of the iss group
-    issGroup.position.set(advancedState.position.x, advancedState.position.y, advancedState.position.z);
-    issGroup.rotation.set(advancedState.rotation.x, advancedState.rotation.y, advancedState.rotation.z);
+    // Focus a specific satellite with the camera
+    focusSatellite(date, getFocusedSatellite(), cameraDistance, canSeeFocusedSatellite);
 
     // Cloud movement
-    clouds.rotation.x = -toRadians(-advancedState.state.latitude + 90);
-    clouds.rotation.y = -toRadians(-advancedState.state.longitude + 90);
+    // clouds.rotation.x = -toRadians(0);
+    // clouds.rotation.y = -toRadians(0);
 
     // Calculate sun position
     let sunState = getPositionOfSun(date);
@@ -180,31 +143,49 @@ function updateSpace(date) {
     moon.position.set(moonPosition.x, moonPosition.y, moonPosition.z);
 }
 
-function updateCameraAndControls(camera, controls, time) {
-    let radius = controls.getRadius();
-    let hasFocusOnIss = radius < Math.max(-earth.position.y, EARTH_RADIUS * 1.3);
-    let canSeeIss = radius < 10000;
+function focusSatellite(date, satellite, cameraDistance, canSeeFocusedSatellite) {
+    // Get data
+    let advancedState = satellite.getAdvancedStateAtTime(date);
 
-    controls.zoomSpeed = radius < 200 || radius >= EARTH_RADIUS ? 1 : 8;
+    // Update the position everything inside of the earth container
+    centerGroup.position.set(0, -advancedState.state.getDistanceToEarthCenter(), 0);
 
-    // Label of the ISS
-    issLabelGroup.visible = !canSeeIss;
+    // Rotate the earth with the ISS position to the top
+    earthGroup.rotation.x = toRadians(-advancedState.state.latitude + 90);
+    earthGroup.rotation.y = toRadians(-advancedState.state.longitude + 90);
 
-    // Update near rendering distance
-    updateNearDistance(camera, radius);
+    // Update controls
+    controls.zoomSpeed = cameraDistance < 200 || cameraDistance >= EARTH_RADIUS ? 1 : 8;
+    controls.target = new THREE.Vector3(0, focusedEarth ? centerGroup.position.y : 0, 0);
 
-    if (iss != null) {
-        updateCameraTarget(camera, controls, hasFocusOnIss);
-    }
-
-    if (atmosphere != null) {
-        updateAtmosphere(camera, controls, hasFocusOnIss, radius);
-    }
-
-    updatePredictionLine(time, canSeeIss);
+    updateNearDistance(canSeeFocusedSatellite);
+    updateBumpScale(cameraDistance);
+    updateAtmosphere(cameraDistance);
 }
 
-function updateAtmosphere(camera, controls, hasFocusOnIss, radius) {
+function updateNearDistance(canSeeFocusedSatellite) {
+    let prevCameraNear = camera.near;
+    camera.near = canSeeFocusedSatellite ? 3 : 100000;
+
+    if (prevCameraNear !== camera.near) {
+        camera.updateProjectionMatrix();
+    }
+}
+
+function updateBumpScale(cameraDistance) {
+    let prevBumpScale = earth.material.bumpScale;
+    earth.material.bumpScale = cameraDistance < EARTH_RADIUS ? 1000 : 10000;
+
+    if (prevBumpScale !== earth.material.bumpScale) {
+        camera.updateProjectionMatrix();
+    }
+}
+
+
+function updateAtmosphere(cameraDistance) {
+    if (atmosphere == null)
+        return;
+
     // The camera vector
     let cameraVector = new THREE.Vector3(camera.matrix.elements[8], camera.matrix.elements[9], camera.matrix.elements[10]);
 
@@ -213,82 +194,20 @@ function updateAtmosphere(camera, controls, hasFocusOnIss, radius) {
     let dummyPosition = dummyCameraPosition.clone();
     dummyPosition.add(cameraVector.clone().multiplyScalar(-1));
     dummyPosition.y = dummyCameraPosition.y - 1.0;
-    let fixedIssViewVector = new THREE.Vector3().subVectors(camera.position, dummyPosition);
+    let fixedOverHorizonViewVector = new THREE.Vector3().subVectors(camera.position, dummyPosition);
+
+    // Smooth transition between two view vectors based on camera zoom
+    let difference = new THREE.Vector3().subVectors(fixedOverHorizonViewVector, cameraVector);
+    difference.multiplyScalar(Math.min(1.0, Math.max(0, 1.0 - 1.0 / controls.maxDistance * cameraDistance * 2)));
+    cameraVector.add(difference);
+
+    // Calculate fade out for atmosphere strength
+    let strength = (ATMOSPHERE_STRENGTH - ATMOSPHERE_STRENGTH / controls.maxDistance * cameraDistance) * 3 - ATMOSPHERE_STRENGTH * 1.1;
 
     // Looking straight to earth or over the horizon
-    atmosphere.material.uniforms.viewVector.value = hasFocusOnIss ? fixedIssViewVector : cameraVector;
-    atmosphere.material.uniforms.c.value = hasFocusOnIss ? ATMOSPHERE_STRENGTH : Math.min(Math.max((ATMOSPHERE_STRENGTH - ATMOSPHERE_STRENGTH / controls.maxDistance * radius) * 3 - ATMOSPHERE_STRENGTH * 1.1, 0.0), ATMOSPHERE_STRENGTH);
+    atmosphere.material.uniforms.viewVector.value = cameraVector;
+    atmosphere.material.uniforms.c.value = Math.min(Math.max(strength, 0.0), ATMOSPHERE_STRENGTH);
 }
-
-function updatePredictionLine(time, canSeeIss) {
-    predictionLine.visible = !canSeeIss;
-
-    if (!canSeeIss) {
-        // Calculate prediction line
-        let points = [];
-        for (let i = 0; i <= ISS_ORBIT_TIME; i += 0.5) {
-            let timeToPredict = new Date(time.getTime() + 1000 * 60 * i);
-
-            // Get data at this prediction time
-            let state = targetSatellite.getStateAtTime(timeToPredict);
-
-            // Get position at this prediction time
-            let position = latLonDegToVector3(state.latitude, state.longitude + 90, state.getDistanceToEarthCenter());
-            points.push(position);
-        }
-        predictionLine.geometry.setFromPoints(points);
-    }
-}
-
-function updateCameraTarget(camera, controls, hasFocusOnIss) {
-    if (cameraState === 0) {
-        if (!hasFocusOnIss) {
-            // Called when the camera moves out of the iss
-            cameraState = 1;
-
-            // Change target
-            controls.target = centerGroup.position;
-
-            // High terrain height map resolution
-            earth.material.bumpScale = 10000;
-
-            // Update
-            camera.updateProjectionMatrix();
-        }
-    } else {
-        if (hasFocusOnIss) {
-            // Called when the camera moved back into the iss
-            cameraState = 0;
-
-            // Change target
-            controls.target = new THREE.Vector3(0, 0, 0);
-
-            // Low terrain height map resolution
-            earth.material.bumpScale = 1000;
-
-            // Set camera position above the ISS
-            let teleportRequired = camera.position.x !== centerGroup.position.x || camera.position.z !== centerGroup.position.z;
-            if (teleportRequired) {
-                camera.position.x = centerGroup.position.x;
-                camera.position.y = 3000;
-                camera.position.z = centerGroup.position.z;
-            }
-
-            // Update
-            camera.updateProjectionMatrix();
-        }
-    }
-}
-
-function updateNearDistance(camera, radius) {
-    let prevCameraNear = camera.near;
-    camera.near = radius < 10000 ? 3 : 100000;
-
-    if (prevCameraNear !== camera.near) {
-        camera.updateProjectionMatrix();
-    }
-}
-
 
 function createAtmosphereMaterial(callback) {
     const loader = new THREE.FileLoader();

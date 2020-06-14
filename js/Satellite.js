@@ -1,5 +1,10 @@
 class Satellite {
-    constructor(id) {
+    id;
+    name;
+    model;
+
+    constructor(id, report = function (loaded, progress) {
+    }) {
         // https://celestrak.com/satcat/tle.php?CATNR=25544
         // https://celestrak.com/pub/TLE/catalog.txt
 
@@ -10,8 +15,14 @@ class Satellite {
             async: false
         }).responseText.split("\n");
 
+        this.id = id;
+        this.name = tle[0];
+
         // Create satellite record
         this.record = satellite.twoline2satrec(tle[1], tle[2]);
+
+        // Create model for scene
+        this.model = new SatelliteModel(this, report);
     }
 
     /**
@@ -71,7 +82,7 @@ class Satellite {
 
         // Get current position and previous position
         let position = latLonDegToVector3(state.latitude, state.longitude + 90, state.getDistanceToEarthCenter());
-        let prevPosition = latLonDegToVector3(prevState.latitude, prevState.longitude  + 90, prevState.getDistanceToEarthCenter());
+        let prevPosition = latLonDegToVector3(prevState.latitude, prevState.longitude + 90, prevState.getDistanceToEarthCenter());
 
         // Get rotation
         let rotation = lookAtThreeJs(position, prevPosition);
@@ -123,5 +134,97 @@ class SatelliteStateAtTime {
      */
     getSpeed() {
         return velocityToSpeed(this.velocity) * 3.6;
+    }
+}
+
+class SatelliteModel {
+    constructor(satellite, report) {
+        this.satellite = satellite;
+
+        // Get instance to access it in functions
+        let instance = this;
+
+        // Scene group
+        this.label = new THREE.Object3D();
+        this.group = new THREE.Object3D();
+
+        // Load the model
+        gltfLoader.load('assets/models/' + satellite.id + '.glb', function (gltf) {
+            instance.group.add(gltf.scene);
+
+            // Report that the model was loaded
+            report(true, 100);
+        }, function (xhr) {
+
+            // Report the model loading progress
+            report(false, 100 / xhr.total * xhr.loaded);
+        }, function (error) {
+
+            // Error occurred
+            console.error(error);
+        });
+
+        // Name of the satellite
+        const labelName = new THREE_Text2D.SpriteText2D("      " + satellite.name, {
+            align: THREE_Text2D.textAlign.left,
+            font: 'bold 40px Arial',
+            fillStyle: '#ffffff',
+            antialias: true
+        })
+        labelName.material.sizeAttenuation = false;
+        labelName.scale.set(0.0003, 0.0003, 1);
+        this.label.add(labelName);
+
+        // Marker circle
+        const markerTextureMap = textureLoader.load("assets/img/marker.png");
+        const markerMaterial = new THREE.SpriteMaterial({
+            map: markerTextureMap,
+            color: 0xffffff,
+            sizeAttenuation: false
+        });
+        const marker = new THREE.Sprite(markerMaterial);
+        marker.scale.set(0.02, 0.02, 1);
+        this.label.add(marker);
+
+        // Prediction line
+        const predictionLineGeometry = new THREE.BufferGeometry();
+        const predictionLineMaterial = new THREE.LineBasicMaterial({color: 0xffffff});
+        this.predictionLine = new THREE.Line(predictionLineGeometry, predictionLineMaterial);
+    }
+
+    update(date, showLabels) {
+        // Get data
+        let advancedState = this.satellite.getAdvancedStateAtTime(date);
+
+        // Set the absolute position and the rotation of the iss group
+        this.group.position.set(advancedState.position.x, advancedState.position.y, advancedState.position.z);
+        this.group.rotation.set(advancedState.rotation.x, advancedState.rotation.y, advancedState.rotation.z);
+
+        // Visible range of the focused satellite
+        this.predictionLine.visible = showLabels;
+        this.label.visible = showLabels;
+
+        // Calculate prediction line
+        if (showLabels) {
+            let points = [];
+            for (let i = 0; i <= ISS_ORBIT_TIME; i += 1) {
+                let timeToPredict = new Date(date.getTime() + 1000 * 60 * i);
+
+                // Get data at this prediction time
+                let state = this.satellite.getStateAtTime(timeToPredict);
+
+                // Get position at this prediction time
+                let position = latLonDegToVector3(state.latitude, state.longitude + 90, state.getDistanceToEarthCenter());
+                points.push(position);
+            }
+            this.predictionLine.geometry.setFromPoints(points);
+        }
+    }
+
+    addModelsTo(parentGroup) {
+        this.group.add(this.label);
+
+        parentGroup.add(this.group);
+        parentGroup.add(this.predictionLine);
     }
 }

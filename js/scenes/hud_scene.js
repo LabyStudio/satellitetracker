@@ -58,7 +58,7 @@ function updateHUD(date) {
     hudTexture.needsUpdate = true;
 
     if (initialized) {
-        drawTelemetry(0, height - 150, 500, 150, date);
+        drawTelemetry(getFocusedSatellite(), 0, height - 150, 500, 150, date);
     } else {
         let status = (initializePercentage < 100 ? "Loading resources " + Math.round(initializePercentage) + "%" : "Initializing...");
         drawText(width / 2, height / 2, status, '#ffffff', 30, true, false);
@@ -73,8 +73,8 @@ function drawProgressbar(x, y, width, height, percentage) {
     drawRect(x, y, x + progress, y + height, '#aa0000')
 }
 
-function drawTelemetry(x, y, width, height, date) {
-    let state = targetSatellite.getStateAtTime(date);
+function drawTelemetry(satellite, x, y, width, height, date) {
+    let state = satellite.getStateAtTime(date);
 
     let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, 0.5)", "rgba(0,0,0, 0.2)");
     let curveStartX = x + width * 0.6;
@@ -82,8 +82,10 @@ function drawTelemetry(x, y, width, height, date) {
     drawRect(x, y, curveStartX, y + height, gradient);
     drawSpeedometerBackgroundCurve(curveStartX, y, width - curveStartX, height, gradient);
 
-    drawSpeedometer(x + 100, y + 100, state.getSpeed(), 30000, "SPEED", "KM/H");
-    drawSpeedometer(x + 280, y + 100, state.altitude, 460, "ALTITUDE", "KM");
+    drawSpeedometer(x + 100, y + 90, state.getSpeed(), 30000, "SPEED", "KM/H");
+    drawSpeedometer(x + 280, y + 90, state.altitude, 460, "ALTITUDE", "KM");
+
+    drawText(x + 100 + (280 - 100) / 2, y + height - 8, satellite.name + " TELEMETRY", '#999999', 14, true, false);
 }
 
 function drawSpeedometer(x, y, value, maxValue, title, unit) {
