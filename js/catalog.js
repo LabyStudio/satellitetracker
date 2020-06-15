@@ -1,5 +1,5 @@
 let satellites = [];
-let focusedEarth = true;
+let focusedEarth = false;
 
 function createSatellites() {
     // Create satellites
@@ -8,8 +8,10 @@ function createSatellites() {
         if (loaded) {
             initializationCompleted();
         }
-    }));
-    satellites.push(new Satellite(37253));
+    }).dock(45476, Port.POISK)
+        .dock(45476, Port.RASSVET)
+        .dock(37253, Port.FORWARD));
+    //satellites.push(new Satellite(37253));
 }
 
 function getFocusedSatellite() {

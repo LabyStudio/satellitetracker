@@ -3,8 +3,7 @@ class Satellite {
     name;
     model;
 
-    constructor(id, report = function (loaded, progress) {
-    }) {
+    constructor(id, callback) {
         // https://celestrak.com/satcat/tle.php?CATNR=25544
         // https://celestrak.com/pub/TLE/catalog.txt
 
@@ -22,7 +21,8 @@ class Satellite {
         this.record = satellite.twoline2satrec(tle[1], tle[2]);
 
         // Create model for scene
-        this.model = new SatelliteModel(this, report);
+        this.model = new SatelliteModel(this.id, this.name, callback);
+        this.docking = [];
     }
 
     /**
@@ -90,6 +90,34 @@ class Satellite {
         // Return the result
         return {state, rotation, position};
     }
+
+    updateModel(date, showLabels) {
+        // Get data for main satellite
+        let advancedState = this.getAdvancedStateAtTime(date);
+
+        // Update main satellite
+        this.model.update(date, advancedState, showLabels, this);
+
+        // Update docked satellites
+        Object.values(this.docking).forEach(satellite => {
+            satellite.update(date, advancedState, false);
+        });
+    }
+
+    addModels(parentGroup, foreground) {
+        // Init main satellite
+        this.model.addModels(parentGroup, foreground, true);
+
+        // Init docked satellites
+        Object.values(this.docking).forEach(satellite => {
+            satellite.addModels(parentGroup, foreground, false);
+        });
+    }
+
+    dock(id, port) {
+        this.docking.push(new SatelliteModel(id, "", SatelliteModel.EMPTY_CALLBACK, port));
+        return this;
+    }
 }
 
 class SatelliteStateAtTime {
@@ -138,26 +166,33 @@ class SatelliteStateAtTime {
 }
 
 class SatelliteModel {
-    constructor(satellite, report) {
-        this.satellite = satellite;
+    static EMPTY_CALLBACK = function (loaded, progress) {
+    };
 
-        // Get instance to access it in functions
-        let instance = this;
-
+    constructor(id, name = "Unknown", callback = SatelliteModel.EMPTY_CALLBACK, port = null) {
         // Scene group
         this.label = new THREE.Object3D();
         this.model = new THREE.Object3D();
 
+        // Get instance to access it in functions
+        let scope = this;
+
         // Load the model
-        gltfLoader.load('assets/models/' + satellite.id + '.glb', function (gltf) {
-            instance.model.add(gltf.scene);
+        gltfLoader.load('assets/models/' + id + '.glb', function (gltf) {
+            scope.model.add(gltf.scene);
+
+            // Shift model to the right docking port
+            if (port != null) {
+                gltf.scene.position.copy(port.offset);
+                gltf.scene.rotation.set( port.rotation.x,  port.rotation.y,  port.rotation.z);
+            }
 
             // Report that the model was loaded
-            report(true, 100);
+            callback(true, 100);
         }, function (xhr) {
 
             // Report the model loading progress
-            report(false, 100 / xhr.total * xhr.loaded);
+            callback(false, 100 / xhr.total * xhr.loaded);
         }, function (error) {
 
             // Error occurred
@@ -165,7 +200,7 @@ class SatelliteModel {
         });
 
         // Name of the satellite
-        const labelName = new THREE_Text2D.SpriteText2D("      " + satellite.name, {
+        const labelName = new THREE_Text2D.SpriteText2D("      " + name, {
             align: THREE_Text2D.textAlign.left,
             font: 'bold 40px Arial',
             fillStyle: '#ffffff',
@@ -192,10 +227,7 @@ class SatelliteModel {
         this.predictionLine = new THREE.Line(predictionLineGeometry, predictionLineMaterial);
     }
 
-    update(date, showLabels) {
-        // Get data
-        let advancedState = this.satellite.getAdvancedStateAtTime(date);
-
+    update(date, advancedState, showLabels, satellite) {
         // Set the absolute position and the rotation of the label
         this.label.position.set(advancedState.position.x, advancedState.position.y, advancedState.position.z);
         this.label.rotation.set(advancedState.rotation.x, advancedState.rotation.y, advancedState.rotation.z);
@@ -215,7 +247,7 @@ class SatelliteModel {
                 let timeToPredict = new Date(date.getTime() + 1000 * 60 * i);
 
                 // Get data at this prediction time
-                let state = this.satellite.getStateAtTime(timeToPredict);
+                let state = satellite.getStateAtTime(timeToPredict);
 
                 // Get position at this prediction time
                 let position = latLonDegToVector3(state.latitude, state.longitude + 90, state.getDistanceToEarthCenter());
@@ -225,9 +257,35 @@ class SatelliteModel {
         }
     }
 
-    addModelsTo(parentGroup, foreground) {
+    addModels(parentGroup, foreground, addLabels) {
         foreground.add(this.model);
-        parentGroup.add(this.label);
-        parentGroup.add(this.predictionLine);
+
+        if (addLabels) {
+            parentGroup.add(this.label);
+            parentGroup.add(this.predictionLine);
+        }
+    }
+
+    shift(offset, rotation) {
+        this.offset = offset;
+        this.rotation = rotation;
+        return this;
+    }
+}
+
+class Port {
+    // ISS Ports
+    static RASSVET = new Port(0, -13.8, -6.9, 0, 0, 0);
+    static POISK = new Port(0, 13.03, -19.9, 0,0, 180);
+    static PIRS = new Port(0, -11.55, -19.9, 0, 0, 0);
+    static AFT = new Port(0, 0.8, -39.4, 90, 0, 0);
+    static FORWARD = new Port(0, -0.8, 22.8, 180, 0, 0);
+
+    offset;
+    rotation;
+
+    constructor(offsetX, offsetY, offsetZ, rotationX, rotationY, rotationZ) {
+        this.offset = new THREE.Vector3(offsetX, offsetY, offsetZ);
+        this.rotation = new THREE.Vector3(toRadians(rotationX), toRadians(rotationY), toRadians(rotationZ));
     }
 }

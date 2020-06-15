@@ -105,7 +105,7 @@ function createSpaceScene(camera, controls) {
 
     // Add satellite model to earth group
     Object.values(satellites).forEach(satellite => {
-        satellite.model.addModelsTo(earthGroup, foreground);
+        satellite.addModels(earthGroup, foreground);
     });
 
     // Init
@@ -126,7 +126,7 @@ function updateSpace(date, layers) {
 
     // Update all satellite positions
     Object.values(satellites).forEach(satellite => {
-        satellite.model.update(date, !canSeeFocusedSatellite);
+        satellite.updateModel(date, !canSeeFocusedSatellite);
     });
 
     // Focus a specific satellite with the camera
