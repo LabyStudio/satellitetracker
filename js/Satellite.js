@@ -3,25 +3,15 @@ class Satellite {
     name;
     model;
 
-    constructor(id, callback) {
-        // https://celestrak.com/satcat/tle.php?CATNR=25544
-        // https://celestrak.com/pub/TLE/catalog.txt
-
-        // Load TLE
-        let tle = $.ajax({
-            type: "GET",
-            url: "assets/tle/" + id + ".txt",
-            async: false
-        }).responseText.split("\n");
-
-        this.id = id;
+    constructor(tle, callback) {
         this.name = tle[0];
 
         // Create satellite record
         this.record = satellite.twoline2satrec(tle[1], tle[2]);
+        this.id = this.record.satnum;
 
         // Create model for scene
-        this.model = new SatelliteModel(this.id, this.name, callback);
+        this.model = new SatelliteModel(this.id, this.name, callback, null);
         this.docking = [];
     }
 
@@ -91,16 +81,16 @@ class Satellite {
         return {state, rotation, position};
     }
 
-    updateModel(date, showLabels) {
+    updateModel(date, showLabels, focused) {
         // Get data for main satellite
         let advancedState = this.getAdvancedStateAtTime(date);
 
         // Update main satellite
-        this.model.update(date, advancedState, showLabels, this);
+        this.model.update(date, advancedState, showLabels, this, focused);
 
         // Update docked satellites
         Object.values(this.docking).forEach(satellite => {
-            satellite.update(date, advancedState, false);
+            satellite.update(date, advancedState, false, false);
         });
     }
 
@@ -112,6 +102,7 @@ class Satellite {
         Object.values(this.docking).forEach(satellite => {
             satellite.addModels(parentGroup, foreground, false);
         });
+        return this;
     }
 
     dock(id, port) {
@@ -168,6 +159,7 @@ class SatelliteStateAtTime {
 class SatelliteModel {
     static EMPTY_CALLBACK = function (loaded, progress) {
     };
+    marker;
 
     constructor(id, name = "Unknown", callback = SatelliteModel.EMPTY_CALLBACK, port = null) {
         // Scene group
@@ -177,26 +169,33 @@ class SatelliteModel {
         // Get instance to access it in functions
         let scope = this;
 
-        // Load the model
-        gltfLoader.load('assets/models/' + id + '.glb', function (gltf) {
+        let successCallback = function (gltf) {
             scope.model.add(gltf.scene);
 
             // Shift model to the right docking port
             if (port != null) {
                 gltf.scene.position.copy(port.offset);
-                gltf.scene.rotation.set( port.rotation.x,  port.rotation.y,  port.rotation.z);
+                gltf.scene.rotation.set(port.rotation.x, port.rotation.y, port.rotation.z);
             }
 
             // Report that the model was loaded
             callback(true, 100);
-        }, function (xhr) {
+        };
 
+        // Load the model
+        gltfLoader.load('assets/models/' + id + '.glb', successCallback, function (xhr) {
             // Report the model loading progress
             callback(false, 100 / xhr.total * xhr.loaded);
         }, function (error) {
 
-            // Error occurred
-            console.error(error);
+            // Load the default model
+            gltfLoader.load('assets/models/default.glb', successCallback, function (xhr) {
+                // Report the model loading progress
+                callback(false, 100 / xhr.total * xhr.loaded);
+            }, function (error) {
+                // Error occurred
+                console.error(error);
+            });
         });
 
         // Name of the satellite
@@ -217,9 +216,9 @@ class SatelliteModel {
             color: 0xffffff,
             sizeAttenuation: false
         });
-        const marker = new THREE.Sprite(markerMaterial);
-        marker.scale.set(0.02, 0.02, 1);
-        this.label.add(marker);
+        this.marker = new THREE.Sprite(markerMaterial);
+        this.marker.scale.set(0.02, 0.02, 1);
+        this.label.add(this.marker);
 
         // Prediction line
         const predictionLineGeometry = new THREE.BufferGeometry();
@@ -227,7 +226,7 @@ class SatelliteModel {
         this.predictionLine = new THREE.Line(predictionLineGeometry, predictionLineMaterial);
     }
 
-    update(date, advancedState, showLabels, satellite) {
+    update(date, advancedState, showLabels, satellite, focused) {
         // Set the absolute position and the rotation of the label
         this.label.position.set(advancedState.position.x, advancedState.position.y, advancedState.position.z);
         this.label.rotation.set(advancedState.rotation.x, advancedState.rotation.y, advancedState.rotation.z);
@@ -239,6 +238,7 @@ class SatelliteModel {
         // Visible range of the focused satellite
         this.predictionLine.visible = showLabels;
         this.label.visible = showLabels;
+        this.model.visible = !showLabels;
 
         // Calculate prediction line
         if (showLabels) {
@@ -254,6 +254,7 @@ class SatelliteModel {
                 points.push(position);
             }
             this.predictionLine.geometry.setFromPoints(points);
+            this.predictionLine.material.color.setHex( focused ? 0x66A3FF : 0xFFFFFF );
         }
     }
 
@@ -274,13 +275,6 @@ class SatelliteModel {
 }
 
 class Port {
-    // ISS Ports
-    static RASSVET = new Port(0, -13.8, -6.9, 0, 0, 0);
-    static POISK = new Port(0, 13.03, -19.9, 0,0, 180);
-    static PIRS = new Port(0, -11.55, -19.9, 0, 0, 0);
-    static AFT = new Port(0, 0.8, -39.4, 90, 0, 0);
-    static FORWARD = new Port(0, -0.8, 22.8, 180, 0, 0);
-
     offset;
     rotation;
 

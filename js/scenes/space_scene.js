@@ -13,8 +13,6 @@ let clouds = null;
 const textureLoader = new THREE.TextureLoader();
 const gltfLoader = new THREE.GLTFLoader();
 
-createSatellites();
-
 function createSpaceScene(camera, controls) {
     textureLoader.crossOrigin = "";
 
@@ -73,6 +71,17 @@ function createSpaceScene(camera, controls) {
     earth.receiveShadow = true;
     earthGroup.add(earth);
 
+    /*
+    // Invisible earth sphere in the foreground layer that casts proper shadows for the satellites
+    let mat = new THREE.MeshPhongMaterial({color: 0xffffff});
+    //mat.colorWrite = false;
+    //mat.depthWrite = false;
+    let mesh = new THREE.Mesh(new THREE.SphereBufferGeometry(EARTH_RADIUS, 10, 10), mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    foreground.add(mesh);
+    */
+
     // Clouds
     const cloudsGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS + CLOUD_HEIGHT, 64, 64);
     const cloudsMaterial = new THREE.MeshPhongMaterial({
@@ -104,9 +113,7 @@ function createSpaceScene(camera, controls) {
     centerGroup.add(stars);
 
     // Add satellite model to earth group
-    Object.values(satellites).forEach(satellite => {
-        satellite.addModels(earthGroup, foreground);
-    });
+    createSatellites(earthGroup, foreground);
 
     // Init
     updateSpace(new Date(), null);
@@ -124,13 +131,17 @@ function updateSpace(date, layers) {
     let cameraDistance = controls.getRadius();
     let canSeeFocusedSatellite = cameraDistance < 10000;
 
+    let focusedSatellite = getFocusedSatellite();
+    if (focusedSatellite == null)
+        return;
+
     // Update all satellite positions
     Object.values(satellites).forEach(satellite => {
-        satellite.updateModel(date, !canSeeFocusedSatellite);
+        satellite.updateModel(date, !canSeeFocusedSatellite, satellite.id === focusedSatellite.id);
     });
 
     // Focus a specific satellite with the camera
-    focusSatellite(date, getFocusedSatellite(), cameraDistance, canSeeFocusedSatellite, layers);
+    focusSatellite(date, focusedSatellite, cameraDistance, canSeeFocusedSatellite, layers);
 
     // Calculate sun position
     let sunState = getPositionOfSun(date);
@@ -158,14 +169,14 @@ function focusSatellite(date, satellite, cameraDistance, canSeeFocusedSatellite,
     earthGroup.rotation.y = toRadians(-advancedState.state.longitude + 90);
 
     // Sync position of satellites in foreground with the background
-    if(layers !== null) {
+    if (layers !== null) {
         layers.foreground.position.copy(centerGroup.position);
         layers.foreground.rotation.copy(earthGroup.rotation);
     }
 
     // Cloud movement
-    clouds.rotation.x = -earthGroup.rotation.x;
-    clouds.rotation.y = -earthGroup.rotation.y;
+    clouds.rotation.x = 0;
+    clouds.rotation.y = date.getTime() / 3000000;
 
     // Update controls
     controls.zoomSpeed = cameraDistance < 200 || cameraDistance >= EARTH_RADIUS ? 1 : 8;

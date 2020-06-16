@@ -2,6 +2,13 @@ let context = null;
 let hudTexture = null;
 let planeGeometry = null;
 
+let textureSatellite = createImage("assets/img/hud/satellite.png");
+let textureEarth = createImage("assets/img/hud/earth.png");
+let texturePlus = createImage("assets/img/hud/plus.png");
+
+let hoveredSatellite = null;
+let hoverToggleEarthFocusButton = false;
+
 function createHUDScene(hudCanvas, cameraHUD) {
     initHUDSize(hudCanvas, cameraHUD)
 
@@ -45,7 +52,7 @@ function initHUDSize(hudCanvas, cameraHUD) {
     cameraHUD.updateProjectionMatrix();
 }
 
-function updateHUD(date) {
+function updateHUD(date, mouseX, mouseY) {
     // Not initialized yet
     if (context == null || hudTexture == null)
         return;
@@ -58,13 +65,86 @@ function updateHUD(date) {
     hudTexture.needsUpdate = true;
 
     if (initialized) {
+        drawSatelliteList(3, height - 160, mouseX, mouseY);
         drawTelemetry(getFocusedSatellite(), 0, height - 150, 500, 150, date);
+
+        drawEarthFocusButton(width - 50, height - 50, 40, mouseX, mouseY);
     } else {
         let status = (initializePercentage < 100 ? "Loading resources " + Math.round(initializePercentage) + "%" : "Initializing...");
-        drawText(width / 2, height / 2, status, '#ffffff', 30, true, false);
+        drawCenteredText(width / 2, height / 2, status, '#ffffff', 30, false);
         drawProgressbar(width / 2 - 100, height / 2 + 30, 200, 3, initializePercentage);
     }
 }
+
+function onClickScreen(mouseX, mouseY) {
+    if (hoveredSatellite != null) {
+        setFocusedSatellite(hoveredSatellite);
+    }
+    if (hoverToggleEarthFocusButton) {
+        toggleEarthFocus();
+    }
+}
+
+// ############ Earth focus button ############
+
+function drawEarthFocusButton(x, y, size, mouseX, mouseY) {
+    let mouseOver = hoverToggleEarthFocusButton = mouseX > x && mouseX < x + size && mouseY > y && mouseY < y + size;
+    let offset = mouseOver ? 1 : 0;
+
+    drawImage(focusedEarth ? textureSatellite : textureEarth, x - offset, y - offset, size + offset * 2, size + offset * 2, mouseOver ? 0.8 : 0.3);
+    if (mouseOver) {
+        drawRightText(x - 5, y + size / 2 + 4, "Focus " + (focusedEarth ? "Satellite" : "Earth"), '#ffffff', 20, false);
+    }
+}
+
+// ############ Satellite list ############
+
+function drawSatelliteList(x, y, mouseX, mouseY) {
+    hoveredSatellite = null;
+
+    Object.values(satellites).forEach(satellite => {
+        y -= 32;
+        drawSatelliteEntry(satellite, x, y, 30, mouseX, mouseY);
+    });
+
+    y -= 32;
+    drawSatellitePlusButton(satellite, x, y, 30, mouseX, mouseY);
+}
+
+function drawSatelliteEntry(satellite, x, y, height, mouseX, mouseY) {
+    let gap = 3;
+    let fontSize = 16;
+
+    // Define font size
+    drawText(0, 0, "", '#ffffff', fontSize, false);
+    let fontWidth = context.measureText(satellite.name).width;
+    let width = x + height + 3 * 2 + fontWidth;
+
+    let focused = satellite === getFocusedSatellite();
+    let mouseOver = mouseX > x && mouseX < x + width && mouseY > y && mouseY < y + height;
+    let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, " + (mouseOver ? 0.8 : 0.3) + ")", "rgba(0,0,0, " + (mouseOver ? 0.6 : 0.2) + ")");
+
+    if (mouseOver) {
+        gap = 1;
+        hoveredSatellite = satellite;
+    }
+
+    drawRect(x, y, x + width, y + height, gradient);
+    drawImage(textureSatellite, x + gap, y + gap, height - gap * 2, height - gap * 2, focused ? 1.0 : 0.4);
+    drawText(x + height + 3, y + height / 2 + fontSize / 2, satellite.name, "rgba(255,255,255, " + (focused ? 1.0 : 0.4) + ")", fontSize, false);
+}
+
+function drawSatellitePlusButton(satellite, x, y, height, mouseX, mouseY) {
+    let width = x + height - 2;
+    let mouseOver = mouseX > x && mouseX < x + width && mouseY > y && mouseY < y + height;
+    let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, " + (mouseOver ? 0.8 : 0.3) + ")", "rgba(0,0,0, " + (mouseOver ? 0.6 : 0.2) + ")");
+    let gap = mouseOver ? 5 : 6;
+
+    drawRect(x, y, x + width, y + height, gradient);
+    drawImage(texturePlus, x + gap, y + gap, height - gap * 2, height - gap * 2, mouseOver ? 0.6 : 0.4);
+}
+
+// ############ Progressbar ############
 
 function drawProgressbar(x, y, width, height, percentage) {
     let progress = width / 100 * percentage;
@@ -72,6 +152,9 @@ function drawProgressbar(x, y, width, height, percentage) {
     drawRect(x + progress, y, x + width, y + height, '#444444')
     drawRect(x, y, x + progress, y + height, '#aa0000')
 }
+
+
+// ############ Telemetry ############
 
 function drawTelemetry(satellite, x, y, width, height, date) {
     let state = satellite.getStateAtTime(date);
@@ -85,7 +168,7 @@ function drawTelemetry(satellite, x, y, width, height, date) {
     drawSpeedometer(x + 100, y + 90, state.getSpeed(), 30000, "SPEED", "KM/H");
     drawSpeedometer(x + 280, y + 90, state.altitude, 460, "ALTITUDE", "KM");
 
-    drawText(x + 100 + (280 - 100) / 2, y + height - 8, satellite.name + " TELEMETRY", '#999999', 14, true, false);
+    drawCenteredText(x + 100 + (280 - 100) / 2, y + height - 8, satellite.name + " TELEMETRY", '#999999', 14, false);
 }
 
 function drawSpeedometer(x, y, value, maxValue, title, unit) {
@@ -119,9 +202,9 @@ function drawSpeedometer(x, y, value, maxValue, title, unit) {
     drawArc(x, y, radius - 3, arcStart - 1, arcStart + 1, 12, '#ffffff');
 
     // Labels
-    drawText(x, y - 35, title, '#999999', 12, true, true);
-    drawText(x, y + 8, Math.round(value * initializeProgress), '#ffffff', 45, true, false);
-    drawText(x, y + 30, unit, '#999999', 12, true, true);
+    drawCenteredText(x, y - 35, title, '#999999', 12, true);
+    drawCenteredText(x, y + 8, Math.round(value * initializeProgress), '#ffffff', 45, false);
+    drawCenteredText(x, y + 30, unit, '#999999', 12, true);
 }
 
 function drawArc(x, y, radius, degreeStart, degreeEnd, thickness, color) {
@@ -131,27 +214,6 @@ function drawArc(x, y, radius, degreeStart, degreeEnd, thickness, color) {
     context.lineJoin = 'round';
     context.lineWidth = thickness;
     context.stroke();
-}
-
-function drawText(x, y, string, color, size, centered, bold) {
-    context.font = (bold ? "bold" : "normal") + " " + size + "px FoundryGridnik";
-    context.fillStyle = color;
-    context.textAlign = centered ? "center" : "left";
-    context.fillText(string, x, y);
-}
-
-function drawRect(left, top, right, bottom, color, alpha = 1) {
-    context.fillStyle = color;
-    context.globalAlpha = alpha;
-    context.fillRect(left, top, right - left, bottom - top);
-    context.globalAlpha = alpha;
-}
-
-function getGradientTopBottom(x, y1, y2, topColor, bottomColor) {
-    const gradient = context.createLinearGradient(x, y1, x, y2);
-    gradient.addColorStop(0, topColor);
-    gradient.addColorStop(1, bottomColor);
-    return gradient;
 }
 
 function drawSpeedometerBackgroundCurve(x, y, width, height, color) {
@@ -180,4 +242,52 @@ function drawSpeedometerBackgroundCurve(x, y, width, height, color) {
     context.lineTo(x, y + height);
     context.closePath();
     context.fill();
+}
+
+// ############ Draw utils ############
+
+
+function drawCenteredText(x, y, string, color, size, bold) {
+    drawAlignmentText(x, y, string, color, size, 0, bold);
+}
+
+function drawText(x, y, string, color, size, bold) {
+    drawAlignmentText(x, y, string, color, size, -1, bold);
+}
+
+function drawRightText(x, y, string, color, size, bold) {
+    drawAlignmentText(x, y, string, color, size, 1, bold);
+}
+
+function drawAlignmentText(x, y, string, color, size, alignment, bold) {
+    context.font = (bold ? "bold" : "normal") + " " + size + "px FoundryGridnik";
+    context.fillStyle = color;
+    context.textAlign = alignment === 0 ? "center" : alignment < 0 ? "left" : "right";
+    context.fillText(string, x, y);
+}
+
+function drawRect(left, top, right, bottom, color, alpha = 1) {
+    context.fillStyle = color;
+    context.globalAlpha = alpha;
+    context.fillRect(left, top, right - left, bottom - top);
+    context.globalAlpha = alpha;
+}
+
+function getGradientTopBottom(x, y1, y2, topColor, bottomColor) {
+    const gradient = context.createLinearGradient(x, y1, x, y2);
+    gradient.addColorStop(0, topColor);
+    gradient.addColorStop(1, bottomColor);
+    return gradient;
+}
+
+function drawImage(image, x, y, width, height, alpha = 1.0) {
+    context.globalAlpha = alpha;
+    context.drawImage(image, x, y, width, height);
+    context.globalAlpha = 1.0;
+}
+
+function createImage(path) {
+    let img = new Image();
+    img.src = path;
+    return img;
 }

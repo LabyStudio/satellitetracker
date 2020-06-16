@@ -40,6 +40,9 @@ controls.rotateSpeed = 0.08;
 let layers = createSpaceScene(camera, controls);
 let sceneHUD = createHUDScene(hudCanvas, cameraHUD);
 
+let mouseX = 0;
+let mouseY = 0;
+
 // Rendering
 const render = function () {
     // The current time for tracking (Super fast time speed in debug mode)
@@ -53,7 +56,7 @@ const render = function () {
 
     // Update the scenes
     updateSpace(date, layers);
-    updateHUD(date);
+    updateHUD(date, mouseX, mouseY);
 
     // Render scenes
     if (initialized) {
@@ -97,4 +100,39 @@ function initializationCompleted() {
     initialized = true;
     initializePercentage = 100;
     initializeTime = new Date().getTime();
+}
+
+// ########### Mouse handling ###########
+
+// Mouse click listener
+renderer.domElement.addEventListener("click", onClick, true);
+renderer.domElement.addEventListener("mousemove", onMove, true);
+
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+
+function onClick(event) {
+    onClickScreen(event.clientX, event.clientY);
+
+    mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+    mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    // Ray cast to the sprite to switch focused satellite
+    Object.values(satellites).forEach(satellite => {
+        if (satellite.model.marker.visible) {
+            let intersects = [];
+            satellite.model.marker.raycast(raycaster, intersects);
+
+            if (intersects.length > 0) {
+                setFocusedSatellite(satellite);
+            }
+        }
+    });
+}
+
+function onMove(event) {
+    mouseX = event.clientX;
+    mouseY = event.clientY;
 }
