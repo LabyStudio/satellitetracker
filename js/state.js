@@ -7,33 +7,28 @@ function createSatellites(earthGroup, foreground) {
     registry.setSatelliteSpawnEnvironment(earthGroup, foreground);
 
     // Create ISS spacecraft
-    registry.loadLocalTLE(25544, function(tle) {
+    registry.loadLocalTLE(ISSPort.ID, function (tle) {
         let satellite = createISSSpacecraft(tle);
-        registry.spawnSatellite(satellite);
+        registry.spawnSatellite(satellite, false);
 
         // Default focus
         focusedSatellite = satellite;
+
+        registry.loadUserCatalog();
     });
 
     // satellites.push(new Satellite(37253));
     // satellites.push(new Satellite(45572));
 
-    /*registry.loadAll(function() {
-        let a = 0;
-        Object.values(registry.database).forEach(tle => {
 
-            if(a % 100 == 0)
-            registry.spawnSatellite(new Satellite(tle));
-            a++;
-        });
-    });
-    */
 }
 
 // ################### ISS ###################
 
 // ISS Ports
 class ISSPort {
+    static ID = 25544;
+
     static RASSVET = new Port(0, -13.8, -6.9, 0, 0, 0);
     static POISK = new Port(0, 13.03, -19.9, 0, 0, 180);
     static PIRS = new Port(0, -11.55, -19.9, 0, 0, 0);

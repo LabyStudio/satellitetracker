@@ -17,18 +17,9 @@ class SatelliteRegistry {
     loadAll(callback) {
         let scope = this;
         $.get(this.databaseFile, function (data) {
-            let lines = data.split("\n");
-
-            // Load TLE's
-            for (let i = 0; i < lines.length; i += 3) {
-
-                // TLE format
-                let name = lines[i];
-                let line1 = lines[i + 1];
-                let line2 = lines[i + 2];
-
-                scope.database[name] = [name, line1, line2];
-            }
+            scope.extractTLE(data, function (name, tle) {
+                scope.database[name] = tle;
+            });
 
             callback();
         });
@@ -54,9 +45,98 @@ class SatelliteRegistry {
         this.foreground = foreground;
     }
 
-    spawnSatellite(satellite) {
+    spawnSatellite(satellite, save = true) {
         satellite.addModels(this.earthGroup, this.foreground);
         satellites.push(satellite);
+
+        if (save) {
+            this.saveUserCatalog();
+        }
     }
 
+    destroySatellite(satelliteToDestroy) {
+        // Remove satellite from list
+        let newSatellites = [];
+        Object.values(satellites).forEach(satellite => {
+            if (satellite !== satelliteToDestroy) {
+                newSatellites.push(satellite);
+            }
+        });
+        satellites = newSatellites;
+
+        // Destroy models from scene
+        satelliteToDestroy.destroyModels(this.earthGroup, this.foreground);
+
+        // New focused satellite
+        if (focusedSatellite === satelliteToDestroy) {
+            setFocusedSatellite(satellites[0]);
+        }
+    }
+
+    // Store catalog
+    saveUserCatalog() {
+        let catalog = "";
+        Object.values(satellites).forEach(satellite => {
+            if (parseInt(satellite.id) !== ISSPort.ID) {
+                Object.values(satellite.tle).forEach(line => {
+                    catalog += line + "\n";
+                });
+            }
+        });
+        setCookie("catalog", encodeURIComponent(catalog));
+    }
+
+    loadUserCatalog() {
+        let scope = this;
+        let data = getCookie("catalog");
+        if (data != null) {
+            this.extractTLE(decodeURIComponent(data), function (name, tle) {
+                scope.spawnSatellite(new Satellite(tle));
+            });
+        }
+    }
+
+    extractTLE(data, callback) {
+        let lines = data.split("\n");
+
+        // Load TLE's
+        for (let i = 0; i < lines.length; i += 3) {
+
+            // TLE format
+            let name = lines[i].trim();
+            let line1 = lines[i + 1];
+            let line2 = lines[i + 2];
+
+            if (name !== "") {
+                callback(name, [name, line1, line2]);
+            }
+        }
+    }
+}
+
+// ################### User storage ###################
+
+function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+        let date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + expires + "; path=/";
+}
+
+function getCookie(name) {
+    let nameEQ = name + "=";
+    let ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
+
+function eraseCookie(name) {
+    document.cookie = name + '=; Max-Age=-99999999;';
 }

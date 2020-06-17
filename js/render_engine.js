@@ -136,3 +136,11 @@ function onMove(event) {
     mouseX = event.clientX;
     mouseY = event.clientY;
 }
+
+// ########### Key handling ###########
+
+window.addEventListener('keydown', onKeyDown,false);
+
+function onKeyDown(event) {
+    onKeyDownScreen(event.key, event.keyCode);
+}

@@ -4,10 +4,18 @@ let planeGeometry = null;
 
 let textureSatellite = createImage("assets/img/hud/satellite.png");
 let textureEarth = createImage("assets/img/hud/earth.png");
+let textureMinus = createImage("assets/img/hud/minus.png");
 let texturePlus = createImage("assets/img/hud/plus.png");
 
-let hoveredSatellite = null;
+let hoverSatellite = null;
 let hoverToggleEarthFocusButton = false;
+let hoverAddSatelliteButton = false;
+let hoverAddSatelliteMenu = false;
+let hoverSatelliteTLE = null;
+let hoverSatelliteToRemove = null;
+
+let flagAddSatelliteMenuOpen = false;
+let stringSearchQuery = "";
 
 function createHUDScene(hudCanvas, cameraHUD) {
     initHUDSize(hudCanvas, cameraHUD)
@@ -67,8 +75,12 @@ function updateHUD(date, mouseX, mouseY) {
     if (initialized) {
         drawSatelliteList(3, height - 160, mouseX, mouseY);
         drawTelemetry(getFocusedSatellite(), 0, height - 150, 500, 150, date);
-
         drawEarthFocusButton(width - 50, height - 50, 40, mouseX, mouseY);
+
+        // Add satellite menu
+        if (flagAddSatelliteMenuOpen) {
+            drawAddSatelliteMenu(width / 2, height / 6, Math.max(400, width / 3), 50, mouseX, mouseY);
+        }
     } else {
         let status = (initializePercentage < 100 ? "Loading resources " + Math.round(initializePercentage) + "%" : "Initializing...");
         drawCenteredText(width / 2, height / 2, status, '#ffffff', 30, false);
@@ -77,11 +89,53 @@ function updateHUD(date, mouseX, mouseY) {
 }
 
 function onClickScreen(mouseX, mouseY) {
-    if (hoveredSatellite != null) {
-        setFocusedSatellite(hoveredSatellite);
+    if (hoverSatellite != null) {
+        setFocusedSatellite(hoverSatellite);
     }
     if (hoverToggleEarthFocusButton) {
         toggleEarthFocus();
+    }
+
+    // Click out of search bar
+    if (!hoverAddSatelliteMenu) {
+        // Close menu
+        flagAddSatelliteMenuOpen = false;
+
+        // Create new satellite
+        if (hoverSatelliteTLE != null) {
+            registry.spawnSatellite(new Satellite(hoverSatelliteTLE));
+
+            hoverSatelliteTLE = null;
+        }
+    }
+
+    // Click on add satellite button
+    if (hoverAddSatelliteButton) {
+        // Open satellite menu
+        flagAddSatelliteMenuOpen = true;
+
+        // Load database if empty
+        if (Object.keys(registry.database).length === 0) {
+            registry.loadAll(function () {
+
+            });
+        }
+    }
+
+    // Remove satellite
+    if (hoverSatelliteToRemove != null) {
+        registry.destroySatellite(hoverSatelliteToRemove);
+        hoverSatelliteToRemove = null;
+    }
+}
+
+function onKeyDownScreen(key, code) {
+    if (flagAddSatelliteMenuOpen) {
+        if (key.length === 1) {
+            stringSearchQuery += key;
+        } else if (code === 8) {
+            stringSearchQuery = stringSearchQuery.substr(0, stringSearchQuery.length - 1);
+        }
     }
 }
 
@@ -100,7 +154,8 @@ function drawEarthFocusButton(x, y, size, mouseX, mouseY) {
 // ############ Satellite list ############
 
 function drawSatelliteList(x, y, mouseX, mouseY) {
-    hoveredSatellite = null;
+    hoverSatellite = null;
+    hoverSatelliteToRemove = null;
 
     Object.values(satellites).forEach(satellite => {
         y -= 32;
@@ -126,12 +181,25 @@ function drawSatelliteEntry(satellite, x, y, height, mouseX, mouseY) {
 
     if (mouseOver) {
         gap = 1;
-        hoveredSatellite = satellite;
+        hoverSatellite = satellite;
     }
 
+    // Draw entry
     drawRect(x, y, x + width, y + height, gradient);
     drawImage(textureSatellite, x + gap, y + gap, height - gap * 2, height - gap * 2, focused ? 1.0 : 0.4);
     drawText(x + height + 3, y + height / 2 + fontSize / 2, satellite.name, "rgba(255,255,255, " + (focused ? 1.0 : 0.4) + ")", fontSize, false);
+
+    if (parseInt(satellite.id) !== ISSPort.ID) {
+        // Draw delete button
+        let hoverMinus = mouseX > x + width + 2 && mouseX < x + width + height + 2 && mouseY > y && mouseY < y + height;
+        let minusOffset = hoverMinus ? 8 : 10;
+        drawRect(x + width + 2, y, x + width + height + 2, y + height, "rgba(0,0,0, " + (hoverMinus ? 0.6 : 0.2) + ")");
+        drawImage(textureMinus, x + width + minusOffset + 2, y + minusOffset, height - minusOffset * 2, height - minusOffset * 2, hoverMinus ? 1.0 : 0.4);
+
+        if (hoverMinus) {
+            hoverSatelliteToRemove = satellite;
+        }
+    }
 }
 
 function drawSatellitePlusButton(satellite, x, y, height, mouseX, mouseY) {
@@ -140,9 +208,75 @@ function drawSatellitePlusButton(satellite, x, y, height, mouseX, mouseY) {
     let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, " + (mouseOver ? 0.8 : 0.3) + ")", "rgba(0,0,0, " + (mouseOver ? 0.6 : 0.2) + ")");
     let gap = mouseOver ? 5 : 6;
 
+    hoverAddSatelliteButton = mouseOver;
+
     drawRect(x, y, x + width, y + height, gradient);
     drawImage(texturePlus, x + gap, y + gap, height - gap * 2, height - gap * 2, mouseOver ? 0.6 : 0.4);
 }
+
+// ############ Add Satellite Menu ############
+
+function drawAddSatelliteMenu(x, y, width, height, mouseX, mouseY) {
+    // Hover menu
+    hoverAddSatelliteMenu = mouseX > x - width / 2 && mouseX < x + width / 2 && mouseY > y && mouseY < y + height;
+    hoverSatelliteTLE = null;
+
+    let padding = 5;
+
+    // Background of menu
+    drawRect(x - width / 2, y, x + width / 2, y + height, "rgba(0,0,0, 0.8)");
+
+    // Search bar
+    drawRect(x - width / 2 + padding, y + padding, x + width / 2 - padding, y + height - padding, "rgba(255,255,255, 0.6)");
+    drawText(x - width / 2 + padding + 3, y + padding + 30, stringSearchQuery, '#000000', 30, false);
+
+    // Blinking cursor
+    if ((new Date().getTime() / 500).toFixed(0) % 2 === 0) {
+        let fontWidth = context.measureText(stringSearchQuery).width;
+        drawText(x - width / 2 + padding + 3 + fontWidth, y + padding + 30 - 4, "_", '#000000', 30, false);
+    }
+
+    let listY = y + height + 20;
+    let query = stringSearchQuery.toLowerCase();
+    let entryHeight = 30;
+
+    let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, 0.9)", "rgba(0,0,0, 0.5)");
+
+    if (Object.keys(registry.database).length === 0) {
+        // Loading
+        drawRect(x - width / 2, listY, x + width / 2, listY + entryHeight, gradient);
+        drawText(x - width / 2, listY + 24, "Loading satellite database...", '#FFFFFF', entryHeight, false);
+    } else {
+        // Draw results
+        let amount = 5;
+        Object.values(registry.database).forEach(tle => {
+            let name = tle[0];
+
+            // Match to the query
+            if (amount > 0 && name.toString().toLowerCase().includes(query)) {
+                let hoverEntry = mouseX > x - width / 2 && mouseX < x + width / 2 && mouseY > listY && mouseY < listY + entryHeight;
+
+                // Draw satellite entry
+                drawRect(x - width / 2, listY, x + width / 2, listY + entryHeight, gradient);
+                drawImage(textureSatellite, x - width / 2 + 1, listY + 1, entryHeight - 2, entryHeight - 2, hoverEntry ? 1.0 : 0.8);
+                drawText(x - width / 2 + entryHeight + 4, listY + entryHeight - 6, name, "rgba(255,255,255, " + (hoverEntry ? 0.8 : 0.5) + ")", entryHeight, false);
+
+                // Add button
+                let hoverAddButton = mouseX > x + width / 2 - entryHeight && mouseX < x + width / 2 && mouseY > listY && mouseY < listY + entryHeight;
+                let iconOffset = hoverAddButton ? 3 : 5;
+                drawImage(texturePlus, x + width / 2 - entryHeight + iconOffset, listY + iconOffset, entryHeight - iconOffset * 2, entryHeight - iconOffset * 2, hoverAddButton ? 0.8 : 0.4);
+
+                if (hoverEntry) {
+                    hoverSatelliteTLE = tle;
+                }
+
+                listY += entryHeight + 4;
+                amount--;
+            }
+        });
+    }
+}
+
 
 // ############ Progressbar ############
 

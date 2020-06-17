@@ -1,9 +1,12 @@
+
 class Satellite {
     id;
     name;
     model;
+    tle;
 
     constructor(tle, callback) {
+        this.tle = tle;
         this.name = tle[0];
 
         // Create satellite record
@@ -86,11 +89,11 @@ class Satellite {
         let advancedState = this.getAdvancedStateAtTime(date);
 
         // Update main satellite
-        this.model.update(date, advancedState, showLabels, this, focused);
+        this.model.update(date, advancedState, showLabels, this, focused, !showLabels);
 
         // Update docked satellites
-        Object.values(this.docking).forEach(satellite => {
-            satellite.update(date, advancedState, false, false);
+        Object.values(this.docking).forEach(model => {
+            model.update(date, advancedState, false, false, focused, !showLabels);
         });
     }
 
@@ -101,6 +104,17 @@ class Satellite {
         // Init docked satellites
         Object.values(this.docking).forEach(satellite => {
             satellite.addModels(parentGroup, foreground, false);
+        });
+        return this;
+    }
+
+    destroyModels(parentGroup, foreground) {
+        // Init main satellite
+        this.model.destroyModels(parentGroup, foreground);
+
+        // Init docked satellites
+        Object.values(this.docking).forEach(satellite => {
+            satellite.destroyModels(parentGroup, foreground);
         });
         return this;
     }
@@ -226,7 +240,7 @@ class SatelliteModel {
         this.predictionLine = new THREE.Line(predictionLineGeometry, predictionLineMaterial);
     }
 
-    update(date, advancedState, showLabels, satellite, focused) {
+    update(date, advancedState, showLabels, satellite, focused, showModel) {
         // Set the absolute position and the rotation of the label
         this.label.position.set(advancedState.position.x, advancedState.position.y, advancedState.position.z);
         this.label.rotation.set(advancedState.rotation.x, advancedState.rotation.y, advancedState.rotation.z);
@@ -238,7 +252,7 @@ class SatelliteModel {
         // Visible range of the focused satellite
         this.predictionLine.visible = showLabels;
         this.label.visible = showLabels;
-        this.model.visible = !showLabels;
+        this.model.visible = showModel;
 
         // Calculate prediction line
         if (showLabels) {
@@ -265,6 +279,12 @@ class SatelliteModel {
             parentGroup.add(this.label);
             parentGroup.add(this.predictionLine);
         }
+    }
+
+    destroyModels(parentGroup, foreground) {
+        foreground.remove(this.model);
+        parentGroup.remove(this.label);
+        parentGroup.remove(this.predictionLine);
     }
 
     shift(offset, rotation) {
