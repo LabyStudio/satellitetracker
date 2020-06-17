@@ -7,8 +7,8 @@ function createSatellites(earthGroup, foreground) {
     registry.setSatelliteSpawnEnvironment(earthGroup, foreground);
 
     // Create ISS spacecraft
-    registry.loadLocalTLE(ISSPort.ID, function (tle) {
-        let satellite = createISSSpacecraft(tle);
+    registry.loadLocalTLE(ISS.ID, function (tle) {
+        let satellite = ISS.createISSSpacecraft(tle);
         registry.spawnSatellite(satellite, false);
 
         // Default focus
@@ -26,25 +26,25 @@ function createSatellites(earthGroup, foreground) {
 // ################### ISS ###################
 
 // ISS Ports
-class ISSPort {
+class ISS {
     static ID = 25544;
 
-    static RASSVET = new Port(0, -13.8, -6.9, 0, 0, 0);
-    static POISK = new Port(0, 13.03, -19.9, 0, 0, 180);
-    static PIRS = new Port(0, -11.55, -19.9, 0, 0, 0);
-    static AFT = new Port(0, 0.8, -39.4, 90, 0, 0);
-    static FORWARD = new Port(0, -0.8, 22.8, 180, 0, 0);
-}
+    static PORT_RASSVET = new Port(0, -13.8, -6.9, 0, 0, 0);
+    static PORT_POISK = new Port(0, 13.03, -19.9, 0, 0, 180);
+    static PORT_PIRS = new Port(0, -11.55, -19.9, 0, 0, 0);
+    static PORT_AFT = new Port(0, 0.8, -39.4, 90, 0, 0);
+    static PORT_FORWARD = new Port(0, -0.8, 22.8, 180, 0, 0);
 
-function createISSSpacecraft(tle) {
-    return new Satellite(tle, function (loaded, progress) {
-        initializePercentage = progress;
-        if (loaded) {
-            initializationCompleted();
-        }
-    }).dock(45476, ISSPort.POISK)
-        .dock(45476, ISSPort.RASSVET)
-        .dock(37253, ISSPort.FORWARD);
+    static createISSSpacecraft(tle) {
+        return new Satellite(tle, function (loaded, progress) {
+            initializePercentage = progress;
+            if (loaded) {
+                initializationCompleted();
+            }
+        }).dock(45476, ISS.PORT_POISK)
+            .dock(45476, ISS.PORT_RASSVET)
+            .dock(37253, ISS.PORT_FORWARD);
+    }
 }
 
 // ################### API ###################

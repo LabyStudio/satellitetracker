@@ -179,7 +179,7 @@ function drawSatelliteEntry(satellite, x, y, height, mouseX, mouseY) {
     let focused = satellite === getFocusedSatellite();
     let mouseOver = mouseX > x && mouseX < x + width && mouseY > y && mouseY < y + height;
     let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, " + (mouseOver ? 0.8 : 0.3) + ")", "rgba(0,0,0, " + (mouseOver ? 0.6 : 0.2) + ")");
-    let iss = parseInt(satellite.id) === ISSPort.ID;
+    let iss = parseInt(satellite.id) === ISS.ID;
 
     if (mouseOver) {
         gap = 1;
@@ -191,7 +191,7 @@ function drawSatelliteEntry(satellite, x, y, height, mouseX, mouseY) {
     drawImage(iss ? textureISS : textureSatellite, x + gap, y + gap, height - gap * 2, height - gap * 2, focused ? 1.0 : 0.4);
     drawText(x + height + 3, y + height / 2 + fontSize / 2, satellite.name, "rgba(255,255,255, " + (focused ? 1.0 : 0.4) + ")", fontSize, false);
 
-    if (parseInt(satellite.id) !== ISSPort.ID) {
+    if (parseInt(satellite.id) !== ISS.ID) {
         // Draw delete button
         let hoverMinus = mouseX > x + width + 2 && mouseX < x + width + height + 2 && mouseY > y && mouseY < y + height;
         let minusOffset = hoverMinus ? 8 : 10;

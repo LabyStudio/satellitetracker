@@ -77,7 +77,7 @@ class SatelliteRegistry {
     saveUserCatalog() {
         let catalog = "";
         Object.values(satellites).forEach(satellite => {
-            if (parseInt(satellite.id) !== ISSPort.ID) {
+            if (parseInt(satellite.id) !== ISS.ID) {
                 Object.values(satellite.tle).forEach(line => {
                     catalog += line + "\n";
                 });
