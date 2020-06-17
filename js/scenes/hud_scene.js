@@ -3,6 +3,7 @@ let hudTexture = null;
 let planeGeometry = null;
 
 let textureSatellite = createImage("assets/img/hud/satellite.png");
+let textureISS = createImage("assets/img/hud/iss.png");
 let textureEarth = createImage("assets/img/hud/earth.png");
 let textureMinus = createImage("assets/img/hud/minus.png");
 let texturePlus = createImage("assets/img/hud/plus.png");
@@ -116,9 +117,7 @@ function onClickScreen(mouseX, mouseY) {
 
         // Load database if empty
         if (Object.keys(registry.database).length === 0) {
-            registry.loadAll(function () {
-
-            });
+            registry.loadAll(function () {});
         }
     }
 
@@ -129,12 +128,14 @@ function onClickScreen(mouseX, mouseY) {
     }
 }
 
-function onKeyDownScreen(key, code) {
+function onKeyDownScreen(key, code, ctrlKey) {
     if (flagAddSatelliteMenuOpen) {
-        if (key.length === 1) {
+        if (key.length === 1 && !ctrlKey) {
             stringSearchQuery += key;
         } else if (code === 8) {
             stringSearchQuery = stringSearchQuery.substr(0, stringSearchQuery.length - 1);
+        } else if (code === 17) {
+            stringSearchQuery = "";
         }
     }
 }
@@ -178,6 +179,7 @@ function drawSatelliteEntry(satellite, x, y, height, mouseX, mouseY) {
     let focused = satellite === getFocusedSatellite();
     let mouseOver = mouseX > x && mouseX < x + width && mouseY > y && mouseY < y + height;
     let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, " + (mouseOver ? 0.8 : 0.3) + ")", "rgba(0,0,0, " + (mouseOver ? 0.6 : 0.2) + ")");
+    let iss = parseInt(satellite.id) === ISSPort.ID;
 
     if (mouseOver) {
         gap = 1;
@@ -186,7 +188,7 @@ function drawSatelliteEntry(satellite, x, y, height, mouseX, mouseY) {
 
     // Draw entry
     drawRect(x, y, x + width, y + height, gradient);
-    drawImage(textureSatellite, x + gap, y + gap, height - gap * 2, height - gap * 2, focused ? 1.0 : 0.4);
+    drawImage(iss ? textureISS : textureSatellite, x + gap, y + gap, height - gap * 2, height - gap * 2, focused ? 1.0 : 0.4);
     drawText(x + height + 3, y + height / 2 + fontSize / 2, satellite.name, "rgba(255,255,255, " + (focused ? 1.0 : 0.4) + ")", fontSize, false);
 
     if (parseInt(satellite.id) !== ISSPort.ID) {
@@ -240,7 +242,7 @@ function drawAddSatelliteMenu(x, y, width, height, mouseX, mouseY) {
     let query = stringSearchQuery.toLowerCase();
     let entryHeight = 30;
 
-    let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, 0.9)", "rgba(0,0,0, 0.5)");
+    let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, 0.95)", "rgba(0,0,0, 0.85)");
 
     if (Object.keys(registry.database).length === 0) {
         // Loading
@@ -248,18 +250,28 @@ function drawAddSatelliteMenu(x, y, width, height, mouseX, mouseY) {
         drawText(x - width / 2, listY + 24, "Loading satellite database...", '#FFFFFF', entryHeight, false);
     } else {
         // Draw results
-        let amount = 5;
-        Object.values(registry.database).forEach(tle => {
+        let amount = 8;
+        for (let id in registry.database) {
+            let tle = registry.database[id];
             let name = tle[0];
 
+            // Already added to the user catalog?
+            let alreadyAdded = false;
+            Object.values(satellites).forEach(satellite => {
+                if(satellite.id === id) {
+                    alreadyAdded = true;
+                }
+            });
+
             // Match to the query
-            if (amount > 0 && name.toString().toLowerCase().includes(query)) {
+            if (amount > 0 && name.toString().toLowerCase().includes(query) && !alreadyAdded) {
                 let hoverEntry = mouseX > x - width / 2 && mouseX < x + width / 2 && mouseY > listY && mouseY < listY + entryHeight;
 
                 // Draw satellite entry
                 drawRect(x - width / 2, listY, x + width / 2, listY + entryHeight, gradient);
                 drawImage(textureSatellite, x - width / 2 + 1, listY + 1, entryHeight - 2, entryHeight - 2, hoverEntry ? 1.0 : 0.8);
-                drawText(x - width / 2 + entryHeight + 4, listY + entryHeight - 6, name, "rgba(255,255,255, " + (hoverEntry ? 0.8 : 0.5) + ")", entryHeight, false);
+                drawText(x - width / 2 + entryHeight + 4, listY + entryHeight - 9, name, "rgba(255,255,255, " + (hoverEntry ? 0.8 : 0.5) + ")", entryHeight / 2, false);
+                drawRightText(x + width / 2 - entryHeight - 4, listY + entryHeight - 9, id, "rgba(255,255,255, " + (hoverEntry ? 0.8 : 0.5) + ")", entryHeight / 2, false);
 
                 // Add button
                 let hoverAddButton = mouseX > x + width / 2 - entryHeight && mouseX < x + width / 2 && mouseY > listY && mouseY < listY + entryHeight;
@@ -273,7 +285,7 @@ function drawAddSatelliteMenu(x, y, width, height, mouseX, mouseY) {
                 listY += entryHeight + 4;
                 amount--;
             }
-        });
+        }
     }
 }
 

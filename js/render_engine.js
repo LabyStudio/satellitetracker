@@ -142,5 +142,5 @@ function onMove(event) {
 window.addEventListener('keydown', onKeyDown,false);
 
 function onKeyDown(event) {
-    onKeyDownScreen(event.key, event.keyCode);
+    onKeyDownScreen(event.key, event.keyCode, event.ctrlKey);
 }

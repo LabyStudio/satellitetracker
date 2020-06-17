@@ -17,16 +17,16 @@ class SatelliteRegistry {
     loadAll(callback) {
         let scope = this;
         $.get(this.databaseFile, function (data) {
-            scope.extractTLE(data, function (name, tle) {
-                scope.database[name] = tle;
+            scope.extractTLE(data, function (name, id, tle) {
+                scope.database[id] = tle;
             });
 
             callback();
         });
     }
 
-    getTLE(name) {
-        return this.database[name];
+    getTLE(id) {
+        return this.database[parseInt(id)];
     }
 
     /**
@@ -90,7 +90,7 @@ class SatelliteRegistry {
         let scope = this;
         let data = getCookie("catalog");
         if (data != null) {
-            this.extractTLE(decodeURIComponent(data), function (name, tle) {
+            this.extractTLE(decodeURIComponent(data), function (name, id, tle) {
                 scope.spawnSatellite(new Satellite(tle));
             });
         }
@@ -108,7 +108,8 @@ class SatelliteRegistry {
             let line2 = lines[i + 2];
 
             if (name !== "") {
-                callback(name, [name, line1, line2]);
+                let id = line2.split(" ")[1];
+                callback(name, parseInt(id), [name, line1, line2]);
             }
         }
     }
