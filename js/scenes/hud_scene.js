@@ -278,7 +278,7 @@ function drawAddSatelliteMenu(x, y, width, height, mouseX, mouseY) {
             });
 
             // Match to the query
-            if (amount > 0 && name.toString().toLowerCase().includes(query) && !alreadyAdded) {
+            if (amount > 0 && (name.toString().toLowerCase().includes(query) || id.toString().includes(query)) && !alreadyAdded) {
                 let hoverEntry = mouseX > x - width / 2 && mouseX < x + width / 2 && mouseY > listY && mouseY < listY + entryHeight;
 
                 // Draw satellite entry
