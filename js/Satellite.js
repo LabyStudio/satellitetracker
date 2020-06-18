@@ -27,6 +27,11 @@ class Satellite {
         const positionEci = positionAndVelocity.position,
             velocity = positionAndVelocity.velocity;
 
+        // Invalid record
+        if (positionEci === undefined) {
+            return new SatelliteStateAtTime(Number.NaN, Number.NaN, Number.NaN, new THREE.Vector3());
+        }
+
         // You will need GMST for some of the coordinate transforms.
         // http://en.wikipedia.org/wiki/Sidereal_time#Definition
         const gmst = satellite.gstime(date);
