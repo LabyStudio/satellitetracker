@@ -33,6 +33,14 @@ function getFocusedSatellite() {
 
 function toggleEarthFocus() {
     focusedEarth = !focusedEarth;
+
+    if (focusedEarth) {
+        camera.position.y = Math.max(4853718, camera.position.y);
+    } else {
+        camera.position.x = 60;
+        camera.position.y = 70;
+        camera.position.z = 60;
+    }
 }
 
 function setFocusedSatellite(satellite) {
