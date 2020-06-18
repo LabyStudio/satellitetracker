@@ -49,6 +49,17 @@
 <script src="js/scenes/hud_scene.js"></script>
 <script src="js/render_engine.js"></script>
 
+
+<!-- Browser Support Check -->
+<script>
+    let ua = window.navigator.userAgent;
+    let msie = ua.indexOf("MSIE ");
+    let isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if (msie > 0 || !!navigator.userAgent.match(/Trident.*rv\:11\./) || isSafari) {
+        alert("Your browser isn't supported! Please use another one.");
+    }
+</script>
+
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-66177517-3"></script>
 <script>

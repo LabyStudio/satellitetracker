@@ -53,7 +53,7 @@ function getEquatorialSunPosition(date) {
 function getSunGroundPoint(time, sunPos) {
     const lat = sunPos.decl;
     const lng = sunPos.rectAsc - getGMST(time);
-    return {lng, lat};
+    return {lng: lng, lat: lat};
 }
 
 function getGMST(time) {
@@ -95,7 +95,7 @@ function getMoonPosition(date) { // geocentric ecliptic coordinates of the moon
     latitude = declination(longitude, latitude);
 
     return {
-        longitude, latitude, distance
+        longitude: longitude, latitude: latitude, distance: distance
     };
 }
 
