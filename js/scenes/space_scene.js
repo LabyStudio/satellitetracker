@@ -205,7 +205,10 @@ function updateAtmosphere(cameraDistance) {
     // Smooth transition between two view vectors based on camera zoom
     let difference = new THREE.Vector3().subVectors(fixedOverHorizonViewVector, cameraVector);
     difference.multiplyScalar(Math.min(1.0, Math.max(0, 1.0 - 1.0 / controls.maxDistance * cameraDistance * 2)));
-    cameraVector.add(difference);
+
+    if (!focusedEarth) {
+        cameraVector.add(difference);
+    }
 
     // Calculate fade out for atmosphere strength
     let strength = (ATMOSPHERE_STRENGTH - ATMOSPHERE_STRENGTH / controls.maxDistance * cameraDistance) * 3 - ATMOSPHERE_STRENGTH * 1.1;

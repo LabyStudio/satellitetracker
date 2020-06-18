@@ -108,21 +108,31 @@ function initializationCompleted() {
 
 // Mouse click listener
 renderer.domElement.addEventListener("click", onClick, true);
-renderer.domElement.addEventListener("touchstart", onTouch, true);
+renderer.domElement.addEventListener("touchstart", onTouchStart, true);
+renderer.domElement.addEventListener("touchend", onTouchEnd, true);
 renderer.domElement.addEventListener("mousemove", onMove, true);
 
 let raycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2();
 
-function onTouch(event) {
-    for (let i = 0; i < event.changedTouches.length; i++) {
-        mouseX = event.changedTouches[i].clientX;
-        mouseY = event.changedTouches[i].clientY;
-        onClick(event.changedTouches[i]);
-    }
+function onTouchStart(event) {
+    if (event.changedTouches.length === 0)
+        return;
 
+    let touch = event.changedTouches[0];
+    mouseX = touch.clientX;
+    mouseY = touch.clientY;
     isMobile = true;
 }
+
+function onTouchEnd(event) {
+    if (event.changedTouches.length === 0)
+        return;
+
+    let touch = event.changedTouches[0];
+    onClick(touch);
+}
+
 
 function onClick(event) {
     onClickScreen(event.clientX, event.clientY);

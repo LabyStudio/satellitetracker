@@ -80,7 +80,7 @@ function updateHUD(date, mouseX, mouseY) {
 
         // Add satellite menu
         if (flagAddSatelliteMenuOpen) {
-            drawAddSatelliteMenu(width / 2, height / 6, Math.max(400, width / 3), 50, mouseX, mouseY);
+            drawAddSatelliteMenu(width / 2, height / 6, isMobile ? width - 20 : Math.max(400, width / 3), isMobile ? 100 : 50, mouseX, mouseY);
         }
     } else {
         let status = (initializePercentage < 100 ? "Loading resources " + Math.round(initializePercentage) + "%" : "Initializing...");
@@ -97,8 +97,17 @@ function onClickScreen(mouseX, mouseY) {
         toggleEarthFocus();
     }
 
-    // Click out of search bar
-    if (!hoverAddSatelliteMenu) {
+    // Click on search bar
+    if (hoverAddSatelliteMenu) {
+        if (isMobile) {
+            let promptString = prompt("Satellite name");
+            if (promptString !== null) {
+                stringSearchQuery = promptString;
+            }
+        }
+    } else {
+        // Click out of search bar
+
         // Close menu
         flagAddSatelliteMenuOpen = false;
 
@@ -115,16 +124,10 @@ function onClickScreen(mouseX, mouseY) {
         // Open satellite menu
         flagAddSatelliteMenuOpen = true;
 
-        if (isMobile) {
-            stringSearchQuery = prompt("Satellite name");
-            if(stringSearchQuery == null) {
-                stringSearchQuery = "";
-            }
-        }
-
         // Load database if empty
         if (Object.keys(registry.database).length === 0) {
-            registry.loadAll(function () {});
+            registry.loadAll(function () {
+            });
         }
     }
 
@@ -237,17 +240,17 @@ function drawAddSatelliteMenu(x, y, width, height, mouseX, mouseY) {
 
     // Search bar
     drawRect(x - width / 2 + padding, y + padding, x + width / 2 - padding, y + height - padding, "rgba(255,255,255, 0.6)");
-    drawText(x - width / 2 + padding + 3, y + padding + 30, stringSearchQuery, '#000000', 30, false);
+    drawText(x - width / 2 + padding + 3, y + padding + (isMobile ? 70 : 30), stringSearchQuery, '#000000', height, false);
 
     // Blinking cursor
     if ((new Date().getTime() / 500).toFixed(0) % 2 === 0) {
         let fontWidth = context.measureText(stringSearchQuery).width;
-        drawText(x - width / 2 + padding + 3 + fontWidth, y + padding + 30 - 4, "_", '#000000', 30, false);
+        drawText(x - width / 2 + padding + 3 + fontWidth, y + padding + (isMobile ? 60 : 30) - 4, "_", '#000000', height, false);
     }
 
     let listY = y + height + 20;
     let query = stringSearchQuery.toLowerCase();
-    let entryHeight = 30;
+    let entryHeight = isMobile ? 80 : 30;
 
     let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, 0.95)", "rgba(0,0,0, 0.85)");
 
@@ -265,7 +268,7 @@ function drawAddSatelliteMenu(x, y, width, height, mouseX, mouseY) {
             // Already added to the user catalog?
             let alreadyAdded = false;
             Object.values(satellites).forEach(satellite => {
-                if(satellite.id === id) {
+                if (satellite.id === id) {
                     alreadyAdded = true;
                 }
             });
@@ -277,8 +280,8 @@ function drawAddSatelliteMenu(x, y, width, height, mouseX, mouseY) {
                 // Draw satellite entry
                 drawRect(x - width / 2, listY, x + width / 2, listY + entryHeight, gradient);
                 drawImage(textureSatellite, x - width / 2 + 1, listY + 1, entryHeight - 2, entryHeight - 2, hoverEntry ? 1.0 : 0.8);
-                drawText(x - width / 2 + entryHeight + 4, listY + entryHeight - 9, name, "rgba(255,255,255, " + (hoverEntry ? 0.8 : 0.5) + ")", entryHeight / 2, false);
-                drawRightText(x + width / 2 - entryHeight - 4, listY + entryHeight - 9, id, "rgba(255,255,255, " + (hoverEntry ? 0.8 : 0.5) + ")", entryHeight / 2, false);
+                drawText(x - width / 2 + entryHeight + 4, listY + entryHeight - (isMobile ? 25 : 9), name, "rgba(255,255,255, " + (hoverEntry ? 0.8 : 0.5) + ")", entryHeight / 2, false);
+                drawRightText(x + width / 2 - entryHeight - 4, listY + entryHeight - (isMobile ? 25 : 9), id, "rgba(255,255,255, " + (hoverEntry ? 0.8 : 0.5) + ")", entryHeight / 2, false);
 
                 // Add button
                 let hoverAddButton = mouseX > x + width / 2 - entryHeight && mouseX < x + width / 2 && mouseY > listY && mouseY < listY + entryHeight;

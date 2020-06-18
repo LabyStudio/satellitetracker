@@ -83,7 +83,7 @@ class SatelliteRegistry {
                 });
             }
         });
-        setCookie("catalog", encodeURIComponent(catalog));
+        setCookie("catalog", encodeURIComponent(catalog), 365 * 10);
     }
 
     loadUserCatalog() {
