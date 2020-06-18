@@ -7,9 +7,9 @@ if (file_exists($cache_file)) {
         // too old , re-fetch
         $cache = file_get_contents($url);
         file_put_contents($cache_file, $cache);
-        echo $cache;
-
         refreshISS($cache);
+
+        echo $cache;
     } else {
         // cache is still fresh
         echo file_get_contents($cache_file);
@@ -18,9 +18,9 @@ if (file_exists($cache_file)) {
     // no cache, create one
     $cache = file_get_contents($url);
     file_put_contents($cache_file, $cache);
-    echo $cache;
-
     refreshISS($cache);
+
+    echo $cache;
 }
 
 function refreshISS($cache)

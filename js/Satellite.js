@@ -133,6 +133,7 @@ class SatelliteStateAtTime {
         this.longitude = longitude;
         this.altitude = altitude;
         this.velocity = velocity;
+        this.crashed = isNaN(latitude) || isNaN(longitude);
     }
 
     /**
@@ -149,6 +150,14 @@ class SatelliteStateAtTime {
      */
     getSpeed() {
         return velocityToSpeed(this.velocity) * 3.6;
+    }
+
+    /**
+     * Is the satellite no longer in the orbit?
+     * @returns {boolean}
+     */
+    hasCrashed() {
+        return this.crashed;
     }
 }
 

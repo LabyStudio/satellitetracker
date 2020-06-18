@@ -74,9 +74,13 @@ function updateHUD(date, mouseX, mouseY) {
     hudTexture.needsUpdate = true;
 
     if (initialized) {
+        let focusedSatellite = getFocusedSatellite();
+        if (focusedSatellite !== undefined) {
+            drawTelemetry(focusedSatellite, 0, height - 150, 500, 150, date);
+            drawEarthFocusButton(width - 50, height - 50, 40, mouseX, mouseY);
+        }
+
         drawSatelliteList(3, height - 160, mouseX, mouseY);
-        drawTelemetry(getFocusedSatellite(), 0, height - 150, 500, 150, date);
-        drawEarthFocusButton(width - 50, height - 50, 40, mouseX, mouseY);
 
         // Add satellite menu
         if (flagAddSatelliteMenuOpen) {
@@ -315,16 +319,20 @@ function drawProgressbar(x, y, width, height, percentage) {
 function drawTelemetry(satellite, x, y, width, height, date) {
     let state = satellite.getStateAtTime(date);
 
-    let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, 0.5)", "rgba(0,0,0, 0.2)");
-    let curveStartX = x + width * 0.6;
+    if (state.hasCrashed()) {
+        drawText(x + 5, y + height - 8, satellite.name + " burnt up in the atmosphere and is no longer in orbit", '#999999', 14, false);
+    } else {
+        let gradient = getGradientTopBottom(x, y, y + height, "rgba(0,0,0, 0.5)", "rgba(0,0,0, 0.2)");
+        let curveStartX = x + width * 0.6;
 
-    drawRect(x, y, curveStartX, y + height, gradient);
-    drawSpeedometerBackgroundCurve(curveStartX, y, width - curveStartX, height, gradient);
+        drawRect(x, y, curveStartX, y + height, gradient);
+        drawSpeedometerBackgroundCurve(curveStartX, y, width - curveStartX, height, gradient);
 
-    drawSpeedometer(x + 100, y + 90, state.getSpeed(), 30000, "SPEED", "KM/H");
-    drawSpeedometer(x + 280, y + 90, state.altitude, 460, "ALTITUDE", "KM");
+        drawSpeedometer(x + 100, y + 90, state.getSpeed(), 30000, "SPEED", "KM/H");
+        drawSpeedometer(x + 280, y + 90, state.altitude, 460, "ALTITUDE", "KM");
 
-    drawCenteredText(x + 100 + (280 - 100) / 2, y + height - 8, satellite.name + " TELEMETRY", '#999999', 14, false);
+        drawCenteredText(x + 100 + (280 - 100) / 2, y + height - 8, satellite.name + " TELEMETRY", '#999999', 14, false);
+    }
 }
 
 function drawSpeedometer(x, y, value, maxValue, title, unit) {

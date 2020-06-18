@@ -45,8 +45,12 @@ function toggleEarthFocus() {
 
 function setFocusedSatellite(satellite) {
     focusedSatellite = satellite;
-    focusedEarth = false;
 
-    camera.position.x = satellite.model.marker.position.x;
-    camera.position.z = satellite.model.marker.position.z;
+    if (satellite !== undefined) {
+        focusedEarth = false;
+        camera.position.x = satellite.model.marker.position.x;
+        camera.position.z = satellite.model.marker.position.z;
+    } else {
+        focusedEarth = true;
+    }
 }
