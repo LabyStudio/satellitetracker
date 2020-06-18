@@ -71,6 +71,8 @@ class SatelliteRegistry {
         if (focusedSatellite === satelliteToDestroy) {
             setFocusedSatellite(satellites[0]);
         }
+
+        this.saveUserCatalog();
     }
 
     // Store catalog
