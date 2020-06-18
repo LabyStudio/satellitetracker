@@ -115,6 +115,13 @@ function onClickScreen(mouseX, mouseY) {
         // Open satellite menu
         flagAddSatelliteMenuOpen = true;
 
+        if (isMobile) {
+            stringSearchQuery = prompt("Satellite name");
+            if(stringSearchQuery == null) {
+                stringSearchQuery = "";
+            }
+        }
+
         // Load database if empty
         if (Object.keys(registry.database).length === 0) {
             registry.loadAll(function () {});

@@ -2,6 +2,8 @@ const debug = false;
 const supportWebGL = !!WebGLRenderingContext && (!!document.createElement('canvas').getContext('experimental-webgl')
     || !!document.createElement('canvas').getContext('webgl'));
 
+let isMobile = false;
+
 let initialized = false;
 let initializePercentage = 0;
 let initializeTime = null;
@@ -106,10 +108,21 @@ function initializationCompleted() {
 
 // Mouse click listener
 renderer.domElement.addEventListener("click", onClick, true);
+renderer.domElement.addEventListener("touchstart", onTouch, true);
 renderer.domElement.addEventListener("mousemove", onMove, true);
 
 let raycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2();
+
+function onTouch(event) {
+    for (let i = 0; i < event.changedTouches.length; i++) {
+        mouseX = event.changedTouches[i].clientX;
+        mouseY = event.changedTouches[i].clientY;
+        onClick(event.changedTouches[i]);
+    }
+
+    isMobile = true;
+}
 
 function onClick(event) {
     onClickScreen(event.clientX, event.clientY);
@@ -139,7 +152,7 @@ function onMove(event) {
 
 // ########### Key handling ###########
 
-window.addEventListener('keydown', onKeyDown,false);
+window.addEventListener('keydown', onKeyDown, false);
 
 function onKeyDown(event) {
     onKeyDownScreen(event.key, event.keyCode, event.ctrlKey);

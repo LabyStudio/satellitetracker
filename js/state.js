@@ -8,7 +8,7 @@ function createSatellites(earthGroup, foreground) {
 
     // Create ISS spacecraft
     registry.loadLocalTLE(ISS.ID, function (tle) {
-        let satellite = ISS.createISSSpacecraft(tle);
+        let satellite = ISS.createSpacecraft(tle);
         registry.spawnSatellite(satellite, false);
 
         // Default focus
@@ -19,8 +19,6 @@ function createSatellites(earthGroup, foreground) {
 
     // satellites.push(new Satellite(37253));
     // satellites.push(new Satellite(45572));
-
-
 }
 
 // ################### ISS ###################
@@ -35,7 +33,7 @@ class ISS {
     static PORT_AFT = new Port(0, 0.8, -39.4, 90, 0, 0);
     static PORT_FORWARD = new Port(0, -0.8, 22.8, 180, 0, 0);
 
-    static createISSSpacecraft(tle) {
+    static createSpacecraft(tle) {
         return new Satellite(tle, function (loaded, progress) {
             initializePercentage = progress;
             if (loaded) {
