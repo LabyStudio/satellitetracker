@@ -48,7 +48,7 @@ let mouseY = 0;
 // Rendering
 const render = function () {
     // The current time for tracking (Super fast time speed in debug mode)
-    let date = !debug ? new Date(1592243523070 + (new Date().getTime() - 1592243523070) * 100) : new Date();
+    let date = debug ? new Date(1592243523070 + (new Date().getTime() - 1592243523070) * 100) : new Date();
 
     // Next frame
     requestAnimationFrame(render);
