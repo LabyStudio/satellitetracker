@@ -4,11 +4,9 @@
 let satellites = [];
 
 class SatelliteRegistry {
-    databaseFile;
-    database = [];
-
     constructor(databaseFile) {
         this.databaseFile = databaseFile;
+        this.database = [];
     }
 
     /**

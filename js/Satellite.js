@@ -1,9 +1,4 @@
-
 class Satellite {
-    id;
-    name;
-    model;
-    tle;
 
     constructor(tle, callback) {
         this.tle = tle;
@@ -127,25 +122,12 @@ class Satellite {
 
 class SatelliteStateAtTime {
     /**
-     * Equator orientation
+     *
+     * @param latitude Equator orientation
+     * @param longitude Prime Meridian orientation
+     * @param altitude The height in km
+     * @param velocity The velocity of the satellite
      */
-    latitude;
-
-    /**
-     * Prime Meridian orientation
-     */
-    longitude;
-
-    /**
-     * The height in km
-     */
-    altitude;
-
-    /**
-     * The velocity of the satellite
-     */
-    velocity = new THREE.Vector3();
-
     constructor(latitude, longitude, altitude, velocity) {
         this.latitude = latitude;
         this.longitude = longitude;
@@ -171,9 +153,10 @@ class SatelliteStateAtTime {
 }
 
 class SatelliteModel {
-    static EMPTY_CALLBACK = function (loaded, progress) {
-    };
-    marker;
+    static get EMPTY_CALLBACK() {
+        return function (loaded, progress) {
+        };
+    }
 
     constructor(id, name = "Unknown", callback = SatelliteModel.EMPTY_CALLBACK, port = null) {
         // Scene group
@@ -268,7 +251,7 @@ class SatelliteModel {
                 points.push(position);
             }
             this.predictionLine.geometry.setFromPoints(points);
-            this.predictionLine.material.color.setHex( focused ? 0x66A3FF : 0xFFFFFF );
+            this.predictionLine.material.color.setHex(focused ? 0x66A3FF : 0xFFFFFF);
         }
     }
 
@@ -295,9 +278,6 @@ class SatelliteModel {
 }
 
 class Port {
-    offset;
-    rotation;
-
     constructor(offsetX, offsetY, offsetZ, rotationX, rotationY, rotationZ) {
         this.offset = new THREE.Vector3(offsetX, offsetY, offsetZ);
         this.rotation = new THREE.Vector3(toRadians(rotationX), toRadians(rotationY), toRadians(rotationZ));
