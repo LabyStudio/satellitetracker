@@ -21,7 +21,7 @@ class ISS {
     }
 
     static get PORT_FORWARD() {
-        return new Port(0, -0.8, 22.8, 180, 0, 0);
+        return new Port(0, -0.8, 24.0, 180, 0, 180);
     }
 
     static createSpacecraft(tle) {
