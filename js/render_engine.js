@@ -1,4 +1,4 @@
-const debug = false;
+let debug = false;
 const supportWebGL = !!WebGLRenderingContext && (!!document.createElement('canvas').getContext('experimental-webgl')
     || !!document.createElement('canvas').getContext('webgl'));
 
@@ -28,7 +28,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
 renderer.autoClear = false;
-renderer.setClearColor(0x000000);
+renderer.setClearColor(0x000000, 0);
 renderer.clear();
 
 // Create controls
@@ -48,7 +48,7 @@ let mouseY = 0;
 // Rendering
 const render = function () {
     // The current time for tracking (Super fast time speed in debug mode)
-    let date = debug ? new Date(1592243523070 + (new Date().getTime() - 1592243523070) * 100) : new Date();
+    let date = debug ? new Date(1592243523070 + (new Date().getTime() - 1592243523070) * 900) : new Date();
 
     // Next frame
     requestAnimationFrame(render);

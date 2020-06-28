@@ -8,6 +8,7 @@ let earth = null;
 let atmosphere = null;
 let moon = null;
 let clouds = null;
+let nightSide = null;
 
 // Loaders
 const textureLoader = new THREE.TextureLoader();
@@ -26,7 +27,7 @@ function createSpaceScene(camera, controls) {
     centerGroup.add(earthGroup);
 
     // Ambient Light
-    const nightLight = new THREE.AmbientLight(0x888888, debug ? 3.2 : 0.2);
+    const nightLight = new THREE.AmbientLight(0x888888, debug ? 3.2 : 0.1);
     background.add(nightLight);
     // Copy night light to foreground for lightning
     foreground.add(nightLight.clone());
@@ -71,16 +72,12 @@ function createSpaceScene(camera, controls) {
     earth.receiveShadow = true;
     earthGroup.add(earth);
 
-    /*
-    // Invisible earth sphere in the foreground layer that casts proper shadows for the satellites
-    let mat = new THREE.MeshPhongMaterial({color: 0xffffff});
-    //mat.colorWrite = false;
-    //mat.depthWrite = false;
-    let mesh = new THREE.Mesh(new THREE.SphereBufferGeometry(EARTH_RADIUS, 10, 10), mat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    foreground.add(mesh);
-    */
+    // Night side of earth (City light)
+    createNightLightMaterial(function (nightLightMaterial) {
+        nightSide = new THREE.Mesh(new THREE.SphereBufferGeometry(EARTH_RADIUS + 1000, 64, 64), nightLightMaterial);
+        nightSide.renderOrder = -1; // Render below labels
+        earthGroup.add(nightSide);
+    });
 
     // Clouds
     const cloudsGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS + CLOUD_HEIGHT, 64, 64);
@@ -146,6 +143,14 @@ function updateSpace(date, layers) {
     // Calculate sun position
     let sunState = getPositionOfSun(date);
     let sunPosition = latLonRadToVector3(sunState.lat, sunState.lng + toRadians(90), SUN_DISTANCE);
+
+    // TODO: Debug
+    //{
+        // Get data
+        //let advancedState = getFocusedSatellite().getAdvancedStateAtTime(date);
+        //sunPosition = latLonDegToVector3( advancedState.state.latitude, advancedState.state.longitude + 90, SUN_DISTANCE);
+    //}
+
     sunGroup.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
 
     // Update sun position in foreground
@@ -155,6 +160,11 @@ function updateSpace(date, layers) {
     let moonState = getMoonPosition(date);
     let moonPosition = latLonRadToVector3(moonState.latitude, moonState.longitude + toRadians(90), moonState.distance * 1000);
     moon.position.set(moonPosition.x, moonPosition.y, moonPosition.z);
+
+    // Update night side shader
+    if (nightSide != null) {
+        nightSide.material.uniforms.viewVector.value = sunPosition.normalize();
+    }
 }
 
 function focusSatellite(date, satellite, cameraDistance, canSeeFocusedSatellite, layers) {
@@ -251,6 +261,29 @@ function createAtmosphereMaterial(callback) {
                 blending: THREE.AdditiveBlending,
                 transparent: true,
                 lights: true
+            });
+
+            callback(material);
+        });
+    });
+}
+
+function createNightLightMaterial(callback) {
+    const loader = new THREE.FileLoader();
+    loader.load("assets/shaders/nightside.frag", function (fragmentShader) {
+        loader.load("assets/shaders/nightside.vert", function (vertexShader) {
+            const uniforms = {
+                viewVector: {value: new THREE.Vector3(0, 0, 0)},
+                nightTexture: {value: textureLoader.load("assets/img/earth_night_map.jpg")},
+            };
+
+            const material = new THREE.ShaderMaterial({
+                uniforms: uniforms,
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                transparent: true,
+                depthTest: false,
+                opacity: 0.6
             });
 
             callback(material);
