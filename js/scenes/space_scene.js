@@ -142,9 +142,9 @@ function updateSpace(date, layers) {
     focusSatellite(date, focusedSatellite, cameraDistance, canSeeFocusedSatellite, layers);
 
     // Calculate sun position
-    let sunState = getPositionOfSun(date);
-    let sunPosition = latLonRadToVector3(sunState.lat, sunState.lng + toRadians(90), SUN_DISTANCE);
-    sunGroup.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
+    let sunPosition = getPositionOfSun(date);
+    let sunCoordinates = latLonRadToVector3(sunPosition.lat, sunPosition.lng + toRadians(90), SUN_DISTANCE);
+    sunGroup.position.set(sunCoordinates.x, sunCoordinates.y, sunCoordinates.z);
 
     // Update sun position in foreground
     sunForeground.position.copy(sunGroup.position);
@@ -156,7 +156,7 @@ function updateSpace(date, layers) {
 
     // Update night side shader
     if (nightSide != null) {
-        nightSide.material.uniforms.viewVector.value = sunPosition.normalize();
+        nightSide.material.uniforms.viewVector.value = sunCoordinates.normalize();
     }
 }
 
@@ -183,8 +183,10 @@ function focusSatellite(date, satellite, cameraDistance, canSeeFocusedSatellite,
 
     // Update controls
     controls.zoomSpeed = cameraDistance < 200 || cameraDistance >= EARTH_RADIUS ? 1 : 8;
-    controls.target = new THREE.Vector3(0, focusedEarth ? centerGroup.position.y : 0, 0);
-    controls.minDistance = focusedEarth ? EARTH_RADIUS + ATMOSPHERE_HEIGHT * 8 : 10;
+    if (!debug) {
+        controls.target = new THREE.Vector3(0, focusedEarth ? centerGroup.position.y : 0, 0);
+        controls.minDistance = focusedEarth ? EARTH_RADIUS + ATMOSPHERE_HEIGHT * 8 : 10;
+    }
 
     // Update bump scale of earth
     earth.material.bumpScale = cameraDistance < EARTH_RADIUS ? 1000 : 10000;

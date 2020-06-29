@@ -1,6 +1,5 @@
 class Satellite {
-
-    constructor(tle, callback) {
+    constructor(tle, callback, state = "default") {
         this.tle = tle;
         this.name = tle[0];
 
@@ -9,7 +8,7 @@ class Satellite {
         this.id = this.record.satnum;
 
         // Create model for scene
-        this.model = new SatelliteModel(this.id, this.name, callback, null);
+        this.model = new SatelliteModel(this.id, state, this.name, callback, null);
         this.docking = [];
     }
 
@@ -49,13 +48,13 @@ class Satellite {
         // Geodetic coords are accessed via `longitude`, `latitude`, `height`.
         let latitude = positionGd.latitude,
             longitude = positionGd.longitude,
-            height = positionGd.height;
+            altitude = positionGd.height;
 
         //  Convert the RADIANS to DEGREES
         latitude = satellite.degreesLat(latitude);
         longitude = satellite.degreesLong(longitude);
 
-        return new SatellitePositionAtTime(latitude, longitude, height, velocity);
+        return new SatellitePositionAtTime(latitude, longitude, altitude, velocity);
     }
 
     /**
@@ -96,9 +95,11 @@ class Satellite {
         // Update main satellite
         this.model.update(date, posAndRot, showLabels, this, focused, !showLabels);
 
+        let scope = this;
+
         // Update docked satellites
         Object.values(this.docking).forEach(model => {
-            model.update(date, posAndRot, false, false, focused, !showLabels);
+            model.update(date, posAndRot, false, scope, focused, !showLabels);
         });
     }
 
@@ -124,8 +125,8 @@ class Satellite {
         return this;
     }
 
-    dock(id, port) {
-        this.docking.push(new SatelliteModel(id, "", SatelliteModel.EMPTY_CALLBACK, port));
+    dock(id, port, state = "default", animationCallback = SatelliteModel.EMPTY_ANIMATION_CALLBACK) {
+        this.docking.push(new SatelliteModel(id, state, "", SatelliteModel.EMPTY_LOAD_CALLBACK, port, animationCallback));
         return this;
     }
 }
@@ -172,12 +173,25 @@ class SatellitePositionAtTime {
 }
 
 class SatelliteModel {
-    static get EMPTY_CALLBACK() {
+    static get EMPTY_LOAD_CALLBACK() {
         return function (loaded, progress) {
         };
     }
 
-    constructor(id, name = "Unknown", callback = SatelliteModel.EMPTY_CALLBACK, port = null) {
+    static get EMPTY_ANIMATION_CALLBACK() {
+        return function (model, date, satellite) {
+        };
+    }
+
+    constructor(id, state, name = "Unknown",
+                callback = SatelliteModel.EMPTY_LOAD_CALLBACK,
+                port = null,
+                animationCallback = SatelliteModel.EMPTY_ANIMATION_CALLBACK) {
+
+        // Animation callback to modify the offset and the rotation
+        this.animationCallback = animationCallback;
+        this.object = null;
+
         // Scene group
         this.label = new THREE.Object3D();
         this.model = new THREE.Object3D();
@@ -186,12 +200,11 @@ class SatelliteModel {
         let scope = this;
 
         let successCallback = function (gltf) {
-            scope.model.add(gltf.scene);
+            scope.model.add(scope.object = gltf.scene);
 
             // Shift model to the right docking port
             if (port != null) {
-                gltf.scene.position.copy(port.offset);
-                gltf.scene.rotation.set(port.rotation.x, port.rotation.y, port.rotation.z);
+                scope.shift(port.offset, port.rotation);
             }
 
             // Report that the model was loaded
@@ -199,13 +212,13 @@ class SatelliteModel {
         };
 
         // Load the model
-        gltfLoader.load('assets/models/' + id + '.glb', successCallback, function (xhr) {
+        gltfLoader.load('assets/models/' + id + '/' + state + '.glb', successCallback, function (xhr) {
             // Report the model loading progress
             callback(false, 100 / xhr.total * xhr.loaded);
         }, function (error) {
 
             // Load the default model
-            gltfLoader.load('assets/models/default.glb', successCallback, function (xhr) {
+            gltfLoader.load('assets/models/default/default.glb', successCallback, function (xhr) {
                 // Report the model loading progress
                 callback(false, 100 / xhr.total * xhr.loaded);
             }, function (error) {
@@ -243,6 +256,8 @@ class SatelliteModel {
     }
 
     update(date, posAndRot, showLabels, satellite, focused, showModel) {
+        this.animationCallback(this, date, satellite);
+
         // Set the absolute position and the rotation of the label
         this.label.position.set(posAndRot.position.x, posAndRot.position.y, posAndRot.position.z);
         this.label.rotation.set(posAndRot.rotation.x, posAndRot.rotation.y, posAndRot.rotation.z);
@@ -290,8 +305,10 @@ class SatelliteModel {
     }
 
     shift(offset, rotation) {
-        this.offset = offset;
-        this.rotation = rotation;
+        if (this.object != null) {
+            this.object.position.copy(offset);
+            this.object.rotation.set(rotation.x, rotation.y, rotation.z);
+        }
         return this;
     }
 }

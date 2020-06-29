@@ -33,7 +33,7 @@ renderer.clear();
 
 // Create controls
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enablePan = false;
+controls.enablePan = debug;
 controls.enableDamping = true
 controls.dampingFactor = 0.06;
 controls.rotateSpeed = 0.08;
@@ -48,7 +48,7 @@ let mouseY = 0;
 // Rendering
 const render = function () {
     // The current time for tracking (Super fast time speed in debug mode)
-    let date = debug ? new Date(1592243523070 + (new Date().getTime() - 1592243523070) * 900) : new Date();
+    let date = debug ? new Date(1592243523070 + (new Date().getTime() - 1592243523070) * 600) : new Date();
 
     // Next frame
     requestAnimationFrame(render);
