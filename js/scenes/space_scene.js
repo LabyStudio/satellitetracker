@@ -231,7 +231,7 @@ function createAtmosphereMaterial(callback) {
                         },
                         glowColor: {
                             type: "c",
-                            value: new THREE.Color(0x93DEFF)
+                            value: new THREE.Color(0x2F6EA7)
                         },
                         viewVector: {
                             type: "v3",

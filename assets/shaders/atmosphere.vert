@@ -1,7 +1,9 @@
 uniform vec3 viewVector;
 uniform float strength;
 uniform float shift;
-varying float intensity;
+
+varying float alphaMix;
+varying float whiteMix;
 
 void main()
 {
@@ -13,10 +15,13 @@ void main()
     float atmosphere = dot(vNormal, vNormel) * transitionStrength - shift;
 
     // Minimum and maximum
-    float mixValue = clamp(atmosphere, 0.0, 1.0);
+    float clampMixAlpha = clamp(atmosphere, 0.0, 1.0);
 
     // Apply strength to atmosphere/mixValue to control it
-    intensity = 1.0 - ((1.0 - mixValue) * strength);
+    alphaMix = 1.0 - ((1.0 - clampMixAlpha) * strength);
+
+    // Smooth transition transition between blue and white (1 = white, 0 = blue)
+    whiteMix = 1.0 - atmosphere - 0.9;
 
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
