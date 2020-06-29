@@ -116,7 +116,7 @@ function createSpaceScene(camera, controls) {
     // Init
     updateSpace(new Date(), null);
 
-    controls.minDistance = 10;
+    // Max camera distance in space
     controls.maxDistance = EARTH_RADIUS * 8;
 
     // ISS default view position
@@ -184,25 +184,29 @@ function focusSatellite(date, satellite, cameraDistance, canSeeFocusedSatellite,
     // Update controls
     controls.zoomSpeed = cameraDistance < 200 || cameraDistance >= EARTH_RADIUS ? 1 : 8;
     controls.target = new THREE.Vector3(0, focusedEarth ? centerGroup.position.y : 0, 0);
+    controls.minDistance = focusedEarth ? EARTH_RADIUS + ATMOSPHERE_HEIGHT * 8 : 10;
 
     // Update bump scale of earth
     earth.material.bumpScale = cameraDistance < EARTH_RADIUS ? 1000 : 10000;
 
-    updateAtmosphere(cameraDistance);
+    updateAtmosphere(cameraDistance, advancedState);
 }
 
-function updateAtmosphere(cameraDistance) {
+function updateAtmosphere(cameraDistance, advancedState) {
     if (atmosphere == null)
         return;
 
     // The camera vector
     let cameraVector = new THREE.Vector3(camera.matrix.elements[8], camera.matrix.elements[9], camera.matrix.elements[10]);
 
+    // Distance to the configured shader setting (The atmosphere shader is configured on a altitude of 437 km)
+    let distanceToAtmosphere = focusedEarth ? cameraDistance : cameraDistance + advancedState.state.altitude * 1000 - 437000;
+
     // Calculate fade out for atmosphere strength
-    let strength = (ATMOSPHERE_STRENGTH - ATMOSPHERE_STRENGTH / controls.maxDistance * cameraDistance) * 2 - ATMOSPHERE_STRENGTH;
+    let strength = (ATMOSPHERE_STRENGTH - ATMOSPHERE_STRENGTH / controls.maxDistance * distanceToAtmosphere) * 2 - ATMOSPHERE_STRENGTH;
 
     // Shift the atmosphere border around the earth
-    let unfocusedEarthShift = 18 - ((ATMOSPHERE_STRENGTH - strength) * 80);
+    let unfocusedEarthShift = 18 - ((ATMOSPHERE_STRENGTH - strength) * 60);
     let focusedEarthShift = 30 * strength - 7.3;
 
     // Looking straight to earth or over the horizon
