@@ -84,6 +84,7 @@ function createSpaceScene(camera, controls) {
     const cloudsMaterial = new THREE.MeshPhongMaterial({
         color: 0xffffff,
         transparent: true,
+        depthTest: false,
         opacity: 0.8
     });
     clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
@@ -143,14 +144,6 @@ function updateSpace(date, layers) {
     // Calculate sun position
     let sunState = getPositionOfSun(date);
     let sunPosition = latLonRadToVector3(sunState.lat, sunState.lng + toRadians(90), SUN_DISTANCE);
-
-    // TODO: Debug
-    //{
-        // Get data
-        //let advancedState = getFocusedSatellite().getAdvancedStateAtTime(date);
-        //sunPosition = latLonDegToVector3( advancedState.state.latitude, advancedState.state.longitude + 90, SUN_DISTANCE);
-    //}
-
     sunGroup.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
 
     // Update sun position in foreground
@@ -205,27 +198,17 @@ function updateAtmosphere(cameraDistance) {
     // The camera vector
     let cameraVector = new THREE.Vector3(camera.matrix.elements[8], camera.matrix.elements[9], camera.matrix.elements[10]);
 
-    // Calculate a perfect vector over the horizon
-    let dummyCameraPosition = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z);
-    let dummyPosition = dummyCameraPosition.clone();
-    dummyPosition.add(cameraVector.clone().multiplyScalar(-1));
-    dummyPosition.y = dummyCameraPosition.y - 1.0;
-    let fixedOverHorizonViewVector = new THREE.Vector3().subVectors(camera.position, dummyPosition);
-
-    // Smooth transition between two view vectors based on camera zoom
-    let difference = new THREE.Vector3().subVectors(fixedOverHorizonViewVector, cameraVector);
-    difference.multiplyScalar(Math.min(1.0, Math.max(0, 1.0 - 1.0 / controls.maxDistance * cameraDistance * 2)));
-
-    if (!focusedEarth) {
-        cameraVector.add(difference);
-    }
-
     // Calculate fade out for atmosphere strength
-    let strength = (ATMOSPHERE_STRENGTH - ATMOSPHERE_STRENGTH / controls.maxDistance * cameraDistance) * 3 - ATMOSPHERE_STRENGTH * 1.1;
+    let strength = (ATMOSPHERE_STRENGTH - ATMOSPHERE_STRENGTH / controls.maxDistance * cameraDistance) * 2 - ATMOSPHERE_STRENGTH;
+
+    // Shift the atmosphere border around the earth
+    let unfocusedEarthShift = 18 - ((ATMOSPHERE_STRENGTH - strength) * 80);
+    let focusedEarthShift = 30 * strength - 7.3;
 
     // Looking straight to earth or over the horizon
-    atmosphere.material.uniforms.viewVector.value = cameraVector;
-    atmosphere.material.uniforms.c.value = Math.min(Math.max(strength, 0.0), ATMOSPHERE_STRENGTH);
+    atmosphere.material.uniforms.viewVector.value = focusedEarth ? cameraVector : new THREE.Vector3(0, 1, 0);
+    atmosphere.material.uniforms.strength.value = Math.min(Math.max(strength, 0.0), ATMOSPHERE_STRENGTH);
+    atmosphere.material.uniforms.shift.value = Math.max(0, focusedEarth ? focusedEarthShift : unfocusedEarthShift);
 }
 
 function createAtmosphereMaterial(callback) {
@@ -238,17 +221,17 @@ function createAtmosphereMaterial(callback) {
                     THREE.UniformsLib.lights,
                     THREE.UniformsLib.ambient,
                     {
-                        "c": {
+                        shift: {
+                            type: "f",
+                            value: 18.0
+                        },
+                        strength: {
                             type: "f",
                             value: ATMOSPHERE_STRENGTH
                         },
-                        "p": {
-                            type: "f",
-                            value: 0.9
-                        },
                         glowColor: {
                             type: "c",
-                            value: new THREE.Color(0x47AEF7)
+                            value: new THREE.Color(0x93DEFF)
                         },
                         viewVector: {
                             type: "v3",
@@ -257,7 +240,7 @@ function createAtmosphereMaterial(callback) {
                     }]),
                 vertexShader: vertexShader,
                 fragmentShader: fragmentShader,
-                side: THREE.FrontSide,
+                side: THREE.BackSide,
                 blending: THREE.AdditiveBlending,
                 transparent: true,
                 lights: true
