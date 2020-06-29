@@ -317,7 +317,7 @@ function drawProgressbar(x, y, width, height, percentage) {
 // ############ Telemetry ############
 
 function drawTelemetry(satellite, x, y, width, height, date) {
-    let state = satellite.getStateAtTime(date);
+    let state = satellite.getPositionAtTime(date);
 
     if (state.hasCrashed()) {
         drawText(x + 5, y + height - 8, satellite.name + " burnt up in the atmosphere and is no longer in orbit", '#999999', 14, false);

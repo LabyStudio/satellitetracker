@@ -162,14 +162,14 @@ function updateSpace(date, layers) {
 
 function focusSatellite(date, satellite, cameraDistance, canSeeFocusedSatellite, layers) {
     // Get data
-    let advancedState = satellite.getAdvancedStateAtTime(date);
+    let posAndRot = satellite.getPositionAndRotationAtTime(date);
 
     // Update the position everything inside of the earth container
-    centerGroup.position.set(0, -advancedState.state.getDistanceToEarthCenter(), 0);
+    centerGroup.position.set(0, -posAndRot.position.getDistanceToEarthCenter(), 0);
 
     // Rotate the earth with the ISS position to the top
-    earthGroup.rotation.x = toRadians(-advancedState.state.latitude + 90);
-    earthGroup.rotation.y = toRadians(-advancedState.state.longitude + 90);
+    earthGroup.rotation.x = toRadians(-posAndRot.position.latitude + 90);
+    earthGroup.rotation.y = toRadians(-posAndRot.position.longitude + 90);
 
     // Sync position of satellites in foreground with the background
     if (layers !== null) {
@@ -189,10 +189,10 @@ function focusSatellite(date, satellite, cameraDistance, canSeeFocusedSatellite,
     // Update bump scale of earth
     earth.material.bumpScale = cameraDistance < EARTH_RADIUS ? 1000 : 10000;
 
-    updateAtmosphere(cameraDistance, advancedState);
+    updateAtmosphere(cameraDistance, posAndRot);
 }
 
-function updateAtmosphere(cameraDistance, advancedState) {
+function updateAtmosphere(cameraDistance, posAndRot) {
     if (atmosphere == null)
         return;
 
@@ -200,7 +200,7 @@ function updateAtmosphere(cameraDistance, advancedState) {
     let cameraVector = new THREE.Vector3(camera.matrix.elements[8], camera.matrix.elements[9], camera.matrix.elements[10]);
 
     // Distance to the configured shader setting (The atmosphere shader is configured on a altitude of 437 km)
-    let distanceToAtmosphere = focusedEarth ? cameraDistance : cameraDistance + advancedState.state.altitude * 1000 - 437000;
+    let distanceToAtmosphere = focusedEarth ? cameraDistance : cameraDistance + posAndRot.position.altitude * 1000 - 437000;
 
     // Calculate fade out for atmosphere strength
     let strength = (ATMOSPHERE_STRENGTH - ATMOSPHERE_STRENGTH / controls.maxDistance * distanceToAtmosphere) * 2 - ATMOSPHERE_STRENGTH;

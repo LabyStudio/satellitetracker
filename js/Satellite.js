@@ -14,11 +14,11 @@ class Satellite {
     }
 
     /**
-     * Returns the satellite state at a specific time
+     * Returns the satellite position at a specific time
      * @param date
-     * @returns {SatelliteStateAtTime}
+     * @returns {SatellitePositionAtTime}
      */
-    getStateAtTime(date = new Date()) {
+    getPositionAtTime(date = new Date()) {
         // Initialize a satellite record
         const positionAndVelocity = satellite.propagate(this.record, date);
 
@@ -29,7 +29,7 @@ class Satellite {
 
         // Invalid record
         if (positionEci === undefined) {
-            return new SatelliteStateAtTime(Number.NaN, Number.NaN, Number.NaN, new THREE.Vector3());
+            return new SatellitePositionAtTime(Number.NaN, Number.NaN, Number.NaN, new THREE.Vector3());
         }
 
         // You will need GMST for some of the coordinate transforms.
@@ -55,45 +55,50 @@ class Satellite {
         latitude = satellite.degreesLat(latitude);
         longitude = satellite.degreesLong(longitude);
 
-        return new SatelliteStateAtTime(latitude, longitude, height, velocity);
+        return new SatellitePositionAtTime(latitude, longitude, height, velocity);
     }
 
     /**
-     * Get advanced state at time
+     * Get position and rotation at time
      * @param date
-     * @returns {{rotation: THREE.Vector3, state: SatelliteStateAtTime, position: THREE.Vector3}}
+     * @returns {{rotation: THREE.Vector3, position: SatellitePositionAtTime}}
      */
-    getAdvancedStateAtTime(date = new Date()) {
+    getPositionAndRotationAtTime(date = new Date()) {
         let timeDifference = 1000 * 60;
 
         // A few moments before
         let prevDate = new Date(date.getTime() + timeDifference);
 
         // Get current data and previous data
-        let state = this.getStateAtTime(date);
-        let prevState = this.getStateAtTime(prevDate);
+        let position = this.getPositionAtTime(date);
+        let prevPosition = this.getPositionAtTime(prevDate);
 
         // Get current position and previous position
-        let position = latLonDegToVector3(state.latitude, state.longitude + 90, state.getDistanceToEarthCenter());
-        let prevPosition = latLonDegToVector3(prevState.latitude, prevState.longitude + 90, prevState.getDistanceToEarthCenter());
+        let coordinatePosition = latLonDegToVector3(position.latitude, position.longitude + 90, position.getDistanceToEarthCenter());
+        let prevCoordinatePosition = latLonDegToVector3(prevPosition.latitude, prevPosition.longitude + 90, prevPosition.getDistanceToEarthCenter());
 
         // Get rotation
-        let rotation = lookAtThreeJs(position, prevPosition);
+        let rotation = lookAtThreeJs(coordinatePosition, prevCoordinatePosition);
+
+        // Store coordinate position into satellite position object
+        position.x = coordinatePosition.x;
+        position.y = coordinatePosition.y;
+        position.z = coordinatePosition.z;
 
         // Return the result
-        return {state, rotation, position};
+        return {position, rotation};
     }
 
     updateModel(date, showLabels, focused) {
         // Get data for main satellite
-        let advancedState = this.getAdvancedStateAtTime(date);
+        let posAndRot = this.getPositionAndRotationAtTime(date);
 
         // Update main satellite
-        this.model.update(date, advancedState, showLabels, this, focused, !showLabels);
+        this.model.update(date, posAndRot, showLabels, this, focused, !showLabels);
 
         // Update docked satellites
         Object.values(this.docking).forEach(model => {
-            model.update(date, advancedState, false, false, focused, !showLabels);
+            model.update(date, posAndRot, false, false, focused, !showLabels);
         });
     }
 
@@ -125,7 +130,7 @@ class Satellite {
     }
 }
 
-class SatelliteStateAtTime {
+class SatellitePositionAtTime {
     /**
      *
      * @param latitude Equator orientation
@@ -237,10 +242,10 @@ class SatelliteModel {
         this.predictionLine = new THREE.Line(predictionLineGeometry, predictionLineMaterial);
     }
 
-    update(date, advancedState, showLabels, satellite, focused, showModel) {
+    update(date, posAndRot, showLabels, satellite, focused, showModel) {
         // Set the absolute position and the rotation of the label
-        this.label.position.set(advancedState.position.x, advancedState.position.y, advancedState.position.z);
-        this.label.rotation.set(advancedState.rotation.x, advancedState.rotation.y, advancedState.rotation.z);
+        this.label.position.set(posAndRot.position.x, posAndRot.position.y, posAndRot.position.z);
+        this.label.rotation.set(posAndRot.rotation.x, posAndRot.rotation.y, posAndRot.rotation.z);
 
         // Apply the absolute position and the rotation to the model
         this.model.position.copy(this.label.position);
@@ -258,7 +263,7 @@ class SatelliteModel {
                 let timeToPredict = new Date(date.getTime() + 1000 * 60 * i);
 
                 // Get data at this prediction time
-                let state = satellite.getStateAtTime(timeToPredict);
+                let state = satellite.getPositionAtTime(timeToPredict);
 
                 // Get position at this prediction time
                 let position = latLonDegToVector3(state.latitude, state.longitude + 90, state.getDistanceToEarthCenter());
