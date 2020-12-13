@@ -17,8 +17,9 @@ function createSatellites(earthGroup, foreground) {
         registry.loadUserCatalog();
     });
 
-    // satellites.push(new Satellite(37253));
-    // satellites.push(new Satellite(45572));
+    //registry.loadLocalTLE(45623, function(tle) {
+    //    registry.spawnSatellite(new Satellite(tle), false);
+    //})
 }
 
 // ################### API ###################

@@ -125,8 +125,8 @@ class Satellite {
         return this;
     }
 
-    dock(id, port, state = "default", animationCallback = SatelliteModel.EMPTY_ANIMATION_CALLBACK) {
-        this.docking.push(new SatelliteModel(id, state, "", SatelliteModel.EMPTY_LOAD_CALLBACK, port, animationCallback));
+    dock(id, name, port, state = State.DOCKED, animationCallback = SatelliteModel.EMPTY_ANIMATION_CALLBACK) {
+        this.docking.push(new SatelliteModel(id, state, name, SatelliteModel.EMPTY_LOAD_CALLBACK, port, animationCallback));
         return this;
     }
 }
@@ -188,6 +188,10 @@ class SatelliteModel {
                 port = null,
                 animationCallback = SatelliteModel.EMPTY_ANIMATION_CALLBACK) {
 
+        // Data
+        this.name = name;
+        this.port = port;
+
         // Animation callback to modify the offset and the rotation
         this.animationCallback = animationCallback;
         this.object = null;
@@ -211,19 +215,22 @@ class SatelliteModel {
             callback(true, 100);
         };
 
-        // Load the model
-        gltfLoader.load('assets/models/' + id + '/' + state + '.glb', successCallback, function (xhr) {
-            // Report the model loading progress
-            callback(false, 100 / xhr.total * xhr.loaded);
-        }, function (error) {
+        // Load model
+        this.loadModel(id, state, successCallback, callback, function (error) {
 
-            // Load the default model
-            gltfLoader.load('assets/models/default/default.glb', successCallback, function (xhr) {
-                // Report the model loading progress
-                callback(false, 100 / xhr.total * xhr.loaded);
-            }, function (error) {
-                // Error occurred
-                console.error(error);
+            // Load pointer
+            $.get('assets/models/' + id + '/pointer.id', function (data, status) {
+
+                // Load pointed model
+                scope.loadModel(data, "default", successCallback, callback, function (error) {
+
+                });
+            }).fail(function () {
+
+                // Load default model
+                scope.loadModel("default", "default", successCallback, callback, function (error) {
+                    console.log("error");
+                });
             });
         });
 
@@ -289,6 +296,15 @@ class SatelliteModel {
         }
     }
 
+    loadModel(id, state, successCallback, progressCallback, errorCallback) {
+        gltfLoader.load('assets/models/' + id + '/' + state + '.glb', successCallback, function (xhr) {
+            // Report the model loading progress
+            progressCallback(false, 100 / xhr.total * xhr.loaded);
+        }, function (error) {
+            errorCallback(error);
+        });
+    }
+
     addModels(parentGroup, foreground, addLabels) {
         foreground.add(this.model);
 
@@ -314,8 +330,23 @@ class SatelliteModel {
 }
 
 class Port {
-    constructor(offsetX, offsetY, offsetZ, rotationX, rotationY, rotationZ) {
+    constructor(name, offsetX, offsetY, offsetZ, rotationX, rotationY, rotationZ) {
+        this.name = name;
         this.offset = new THREE.Vector3(offsetX, offsetY, offsetZ);
         this.rotation = new THREE.Vector3(toRadians(rotationX), toRadians(rotationY), toRadians(rotationZ));
+    }
+}
+
+class State {
+    static get DOCKED() {
+        return "docked";
+    }
+
+    static get DEFAULT() {
+        return "default";
+    }
+
+    static get RETURN() {
+        return "return";
     }
 }

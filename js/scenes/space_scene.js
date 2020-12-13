@@ -43,7 +43,7 @@ function createSpaceScene(camera, controls) {
     const moonMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
     moon = new THREE.Mesh(moonGeometry, moonMaterial);
     moonMaterial.map = textureLoader.load('assets/img/moon_map.jpg');
-    centerGroup.add(moon);
+    earthGroup.add(moon);
 
     // Add sun flare
     let textureFlareLens = textureLoader.load("assets/img/lensflares/lens_flare.png");
@@ -151,7 +151,7 @@ function updateSpace(date, layers) {
 
     // Calculate moon position
     let moonState = getMoonPosition(date);
-    let moonPosition = latLonRadToVector3(moonState.latitude, moonState.longitude + toRadians(90), moonState.distance * 1000);
+    let moonPosition = latLonDegToVector3(moonState.latitude, moonState.longitude + toRadians(90), moonState.altitude);
     moon.position.set(moonPosition.x, moonPosition.y, moonPosition.z);
 
     // Update night side shader
@@ -183,10 +183,10 @@ function focusSatellite(date, satellite, cameraDistance, canSeeFocusedSatellite,
 
     // Update controls
     controls.zoomSpeed = cameraDistance < 200 || cameraDistance >= EARTH_RADIUS ? 1 : 8;
-    if (!debug) {
+    //if (!debug) {
         controls.target = new THREE.Vector3(0, focusedEarth ? centerGroup.position.y : 0, 0);
         controls.minDistance = focusedEarth ? EARTH_RADIUS + ATMOSPHERE_HEIGHT * 8 : 10;
-    }
+    //}
 
     // Update bump scale of earth
     earth.material.bumpScale = cameraDistance < EARTH_RADIUS ? 1000 : 10000;

@@ -1,3 +1,10 @@
+With bottom modules:
 x 0
 y 3736,957
 z 5274,2192
+
+
+Without bottom modules:
+x 0
+y 6030,39
+z 6470.86

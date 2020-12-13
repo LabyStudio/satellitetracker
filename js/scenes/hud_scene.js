@@ -7,9 +7,11 @@ let textureISS = createImage("assets/img/hud/iss.png");
 let textureEarth = createImage("assets/img/hud/earth.png");
 let textureMinus = createImage("assets/img/hud/minus.png");
 let texturePlus = createImage("assets/img/hud/plus.png");
+let textureDock = createImage("assets/img/hud/dock.png");
 
 let hoverSatellite = null;
 let hoverToggleEarthFocusButton = false;
+let hoverToggleDockingButton = false;
 let hoverAddSatelliteButton = false;
 let hoverAddSatelliteMenu = false;
 let hoverSatelliteTLE = null;
@@ -17,6 +19,8 @@ let hoverSatelliteToRemove = null;
 
 let flagAddSatelliteMenuOpen = false;
 let stringSearchQuery = "";
+
+let showDockingInformation = false;
 
 function createHUDScene(hudCanvas, cameraHUD) {
     initHUDSize(hudCanvas, cameraHUD)
@@ -76,11 +80,34 @@ function updateHUD(date, mouseX, mouseY) {
     if (initialized) {
         let focusedSatellite = getFocusedSatellite();
         if (focusedSatellite !== undefined) {
-            drawTelemetry(focusedSatellite, 0, height - 150, 500, 150, date);
+            let dockingAvailable = focusedSatellite.docking.length > 0;
+
+            // Docking list
+            if (showDockingInformation && dockingAvailable) {
+                drawDockingList(focusedSatellite.docking, width - 10, 18);
+            }
+
+            // Draw earth focus button on right side
             drawEarthFocusButton(width - 50, height - 50, 40, mouseX, mouseY);
+
+            // Draw docking toggle button
+            if (dockingAvailable) {
+                drawDockingButton(width - 50, height - 100, 40, mouseX, mouseY);
+            }
+
+            if (!isMobile) {
+                // Draw telemetry in the bottom left
+                drawTelemetry(focusedSatellite, 0, height - 150, 500, 150, date);
+
+                // Draw hint for user experience
+                if (!focusedEarth && !hoverToggleEarthFocusButton) {
+                    drawHint(width - 40, height - 40, "You can switch to earth view here", '#666666', '#ffffff', 0.4);
+                }
+            }
         }
 
-        drawSatelliteList(3, height - 160, mouseX, mouseY);
+        // Draw satellite list
+        drawSatelliteList(3, height - (isMobile ? 10 : 160), mouseX, mouseY);
 
         // Add satellite menu
         if (flagAddSatelliteMenuOpen) {
@@ -99,6 +126,10 @@ function onClickScreen(mouseX, mouseY) {
     }
     if (hoverToggleEarthFocusButton) {
         toggleEarthFocus();
+    }
+
+    if (hoverToggleDockingButton) {
+        showDockingInformation = !showDockingInformation;
     }
 
     // Click on search bar
@@ -154,7 +185,7 @@ function onKeyDownScreen(key, code, ctrlKey) {
     }
 }
 
-// ############ Earth focus button ############
+// ############ Right bottom buttons ############
 
 function drawEarthFocusButton(x, y, size, mouseX, mouseY) {
     let mouseOver = hoverToggleEarthFocusButton = mouseX > x && mouseX < x + size && mouseY > y && mouseY < y + size;
@@ -163,6 +194,16 @@ function drawEarthFocusButton(x, y, size, mouseX, mouseY) {
     drawImage(focusedEarth ? textureSatellite : textureEarth, x - offset, y - offset, size + offset * 2, size + offset * 2, mouseOver ? 0.8 : 0.3);
     if (mouseOver) {
         drawRightText(x - 5, y + size / 2 + 4, "Focus " + (focusedEarth ? "Satellite" : "Earth"), '#ffffff', 20, false);
+    }
+}
+
+function drawDockingButton(x, y, size, mouseX, mouseY) {
+    let mouseOver = hoverToggleDockingButton = mouseX > x && mouseX < x + size && mouseY > y && mouseY < y + size;
+    let offset = mouseOver ? 1 : 0;
+
+    drawImage(textureDock, x - offset, y - offset, size + offset * 2, size + offset * 2, mouseOver ? 0.8 : 0.3);
+    if (mouseOver) {
+        drawRightText(x - 5, y + size / 2 + 4, (showDockingInformation ? "Hide" : "Show") + " docking information", '#ffffff', 20, false);
     }
 }
 
@@ -228,6 +269,44 @@ function drawSatellitePlusButton(satellite, x, y, height, mouseX, mouseY) {
 
     drawRect(x, y, x + width, y + height, gradient);
     drawImage(texturePlus, x + gap, y + gap, height - gap * 2, height - gap * 2, mouseOver ? 0.6 : 0.4);
+}
+
+// ############ Docking list ############
+
+function drawDockingList(docking, x, y) {
+    let fontSize = 15;
+    let list = [];
+
+    // Max satellite name
+    let maxValueLength = 0;
+    let maxKeyLength = 0;
+    for (const index in docking) {
+        let satellite = docking[index];
+        if (satellite.port != null) {
+            maxValueLength = Math.max(maxValueLength, getStringWidth(satellite.name, fontSize, false));
+            maxKeyLength = Math.max(maxKeyLength, getStringWidth(satellite.port.name, fontSize, false));
+            list.push(satellite);
+        }
+    }
+
+    // Title
+    drawText(x - maxValueLength - 10 - maxKeyLength, y, "Docked spacecrafts:", '#ffffff', false);
+    y += fontSize + 5;
+
+    // Sort
+    list.sort((a, b) => {
+        return getStringWidth(b.port.name, fontSize, false) - getStringWidth(a.port.name, fontSize, false);
+    });
+
+    // Satellite list
+    for (const index in list) {
+        let satellite = list[index];
+
+        drawRightText(x - maxValueLength - 5, y, satellite.port.name + ":", '#aa0000', fontSize, false);
+        drawText(x - maxValueLength, y, satellite.name, '#999999', fontSize, false);
+
+        y += fontSize;
+    }
 }
 
 // ############ Add Satellite Menu ############
@@ -423,11 +502,90 @@ function drawRightText(x, y, string, color, size, bold) {
     drawAlignmentText(x, y, string, color, size, 1, bold);
 }
 
+function drawHint(x, y, string, backgroundColor = '#444444', fontColor = '#ffffff', alpha = 0.4) {
+    let arrowWidth = 10;
+    let arrowHeight = 10;
+
+    let initializationDuration = 2000;
+    let visibleDuration = 8000;
+
+    // Fade in
+    let timePassed = new Date().getTime() - initializeTime;
+    let initializeProgress = sigmoid(Math.max(0, Math.min(1, timePassed / initializationDuration)) * 10);
+
+    // Fade out
+    if (timePassed > visibleDuration + initializationDuration) {
+        initializeProgress = 0.0;
+    } else if (timePassed > visibleDuration) {
+        initializeProgress -= Math.min(1.0, 1.0 / initializationDuration * (timePassed - visibleDuration));
+    }
+
+    let fontSize = 15;
+    let padding = 7;
+
+    let stringWidth = getStringWidth(string, fontSize, false);
+    let width = stringWidth + padding * 2;
+    let height = fontSize + padding * 2 - 5;
+
+    // Shift hint
+    x -= arrowWidth;
+    y -= arrowHeight * initializeProgress;
+
+    // Draw arrow
+    context.globalAlpha = alpha * initializeProgress;
+    context.fillStyle = backgroundColor;
+    context.beginPath();
+    context.moveTo(x, y - height);
+    context.lineTo(x + arrowWidth, y + arrowHeight);
+    context.lineTo(x - height, y);
+    context.lineTo(x, y);
+    context.closePath();
+    context.fill();
+
+    // Draw background rect
+    drawRect(x - width, y - height, x, y, backgroundColor, alpha * initializeProgress);
+
+    // Draw text
+    context.globalAlpha = 1.0 * initializeProgress;
+    drawText(x - width + padding, y - padding, string, fontColor, fontSize, false);
+}
+
+function drawRoundRect(x, y, width, height, radius = 5, thickness = 2, color, strokeColor, fill = true, stroke = true) {
+    context.beginPath();
+    context.lineWidth = thickness;
+    context.moveTo(x + radius, y);
+    context.lineTo(x + width - radius, y);
+    context.quadraticCurveTo(x + width, y, x + width, y + radius);
+    context.lineTo(x + width, y + height - radius);
+    context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    context.lineTo(x + radius, y + height);
+    context.quadraticCurveTo(x, y + height, x, y + height - radius);
+    context.lineTo(x, y + radius);
+    context.quadraticCurveTo(x, y, x + radius, y);
+    context.closePath();
+
+    if (fill) {
+        context.fillStyle = color;
+        context.fill();
+    }
+
+    if (stroke) {
+        context.strokeStyle = strokeColor;
+        context.stroke();
+    }
+}
+
+
 function drawAlignmentText(x, y, string, color, size, alignment, bold) {
     context.font = (bold ? "bold" : "normal") + " " + size + "px FoundryGridnik";
     context.fillStyle = color;
     context.textAlign = alignment === 0 ? "center" : alignment < 0 ? "left" : "right";
     context.fillText(string, x, y);
+}
+
+function getStringWidth(string, size, bold) {
+    context.font = (bold ? "bold" : "normal") + " " + size + "px FoundryGridnik";
+    return context.measureText(string).width;
 }
 
 function drawRect(left, top, right, bottom, color, alpha = 1) {

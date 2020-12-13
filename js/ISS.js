@@ -3,29 +3,38 @@ class ISS {
         return 25544;
     }
 
-    // ISS Ports
-    static get PORT_RASSVET() {
-        return new Port(0, -13.8, -6.9, 0, 0, 0);
+    // ############### ISS Ports ###############
+
+    // Naming: https://www.nasa.gov/sites/default/files/styles/full_width/public/thumbnails/image/iss_config_exploded_view_page_0.jpg?itok=JgPFlPWt
+
+    // Top Node 2
+    static get PORT_PMA_3() {
+        return new Port("PMA 3", 0, 2.13, 16.18, 0, 180, 0);
     }
 
-    static get PORT_POISK() {
-        return new Port(0, 13.03, -19.9, 0, 0, 180);
+    // Space shuttle
+    static get PORT_PMA_2() {
+        return new Port("PMA 2",0, -0.8, 20.8, 90, 180, 0);
     }
 
-    static get PORT_PIRS() {
-        return new Port(0, -11.55, -19.9, 0, 0, 0);
+    // Top highest
+    static get PORT_MRM_2() {
+        return new Port("MRM 2",0, 5.63, -19.9, 0, 0, 0);
     }
 
+    // Bottom long extension
+    static get PORT_MRM_1() {
+        return new Port("MRM 1",0, -6.55, -6.9, 0, 0, 180);
+    }
+
+    // Bottom short extension
+    static get PORT_DC_1() {
+        return new Port("DC 1",0, -4.4, -19.9, 0, 0, 180);
+    }
+
+    // End of spacecraft
     static get PORT_AFT() {
-        return new Port(0, 0.8, -39.4, 90, 0, 0);
-    }
-
-    static get PORT_FORWARD() {
-        return new Port(0, -0.8, 24.0, 180, 0, 180);
-    }
-
-    static get PORT_SOLAR_ARRAY_ROD() {
-        return new Port(0, 0.0, 0.0, 0, 0, 0);
+        return new Port("AFT",0, 0.4, -32.0, 90, 0, 180);
     }
 
     static createSpacecraft(tle) {
@@ -37,7 +46,7 @@ class ISS {
         }, "main");
 
         // Add solar array rod
-        satellite.dock(25544, null, "solar_array_rod", function (model, date, satellite) {
+        satellite.dock(25544, "Solar Rod", null, "solar_array_rod", function (model, date, satellite) {
             model.shift(new THREE.Vector3(0.0, 5.0, 5.0), ISS.calculateSolarArrayRotation(date, satellite, false));
         })
 
@@ -46,20 +55,24 @@ class ISS {
             let mirror = i === 0 ? 1 : -1;
 
             // Outer solar array
-            satellite.dock(25544, null, i === 0 ? "solar_array_left" : "solar_array_right", function (model, date, satellite) {
+            satellite.dock(25544, "Solar Array", null, i === 0 ? "solar_array_left" : "solar_array_right", function (model, date, satellite) {
                 model.shift(new THREE.Vector3(50.0 * mirror, 5, 5.0), ISS.calculateSolarArrayRotation(date, satellite, true));
             });
 
             // Inner solar array
-            satellite.dock(25544, null, i === 0 ? "solar_array_left" : "solar_array_right", function (model, date, satellite) {
+            satellite.dock(25544, "Solar Array", null, i === 0 ? "solar_array_left" : "solar_array_right", function (model, date, satellite) {
                 model.shift(new THREE.Vector3(34.3 * mirror, 5, 5.0), ISS.calculateSolarArrayRotation(date, satellite, true));
             });
         }
 
         // Docking soyuz satellites
-        satellite.dock(45476, ISS.PORT_POISK);
-        satellite.dock(45476, ISS.PORT_RASSVET);
-        satellite.dock(45623, ISS.PORT_FORWARD, "docked");
+        satellite.dock(46613, "Progress 75", ISS.PORT_AFT);
+        satellite.dock(46613, "Progress 76", ISS.PORT_DC_1);
+        satellite.dock(46613, "Soyuz MS-17", ISS.PORT_MRM_1);
+
+        // Docking dragons
+        satellite.dock(46920, "Crew-1 Dragon", ISS.PORT_PMA_2);
+        satellite.dock(46920, "CRS-21 Cargo Dragon", ISS.PORT_PMA_3);
 
         return satellite;
     }

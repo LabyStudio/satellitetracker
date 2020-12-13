@@ -2,7 +2,7 @@ let debug = false;
 const supportWebGL = !!WebGLRenderingContext && (!!document.createElement('canvas').getContext('experimental-webgl')
     || !!document.createElement('canvas').getContext('webgl'));
 
-let isMobile = false;
+let isMobile = detectTouchDevice();
 
 let initialized = false;
 let initializePercentage = 0;
@@ -45,10 +45,12 @@ let sceneHUD = createHUDScene(hudCanvas, cameraHUD);
 let mouseX = 0;
 let mouseY = 0;
 
+let appStart = new Date().getTime();
+
 // Rendering
 const render = function () {
     // The current time for tracking (Super fast time speed in debug mode)
-    let date = debug ? new Date(1592243523070 + (new Date().getTime() - 1592243523070) * 600) : new Date();
+    let date = debug ? new Date(appStart + (new Date().getTime() - appStart) * 600) : new Date();
 
     // Next frame
     requestAnimationFrame(render);
@@ -123,6 +125,15 @@ function onTouchStart(event) {
     mouseX = touch.clientX;
     mouseY = touch.clientY;
     isMobile = true;
+}
+
+function detectTouchDevice() {
+    let match = window.matchMedia || window.msMatchMedia;
+    if(match) {
+        let mq = match("(pointer:coarse)");
+        return mq.matches;
+    }
+    return false;
 }
 
 function onTouchEnd(event) {

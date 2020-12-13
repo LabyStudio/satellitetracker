@@ -82,20 +82,58 @@ function rev(angle) {
 // ################ MOON ################
 
 function getMoonPosition(date) { // geocentric ecliptic coordinates of the moon
-    const time = toDays(date);
-    let L = rad * (218.316 + 13.176396 * time), // ecliptic longitude
-        M = rad * (134.963 + 13.064993 * time), // mean anomaly
-        F = rad * (93.272 + 13.229350 * time),  // mean distance
+    let age, // Moon's age
+        distance, // Moon's distance in earth radii
+        latitude, // Moon's ecliptic latitude
+        longitude, // Moon's ecliptic longitude
+        altitude, // Altitude in m
+        phase, // Moon's phase
+        trajectory, // Moon's trajectory
+        zodiac; // Moon's zodiac sign
 
-        longitude = L + rad * 6.289 * Math.sin(M), // longitude
-        latitude = rad * 5.128 * Math.sin(F),     // latitude
-        distance = 385001 - 20905 * Math.cos(M);  // distance to the moon in km
+    let yy, mm, k1, k2, k3, jd;
+    let ip, dp, np, rp;
 
-    longitude = rightAscension(longitude, latitude);
-    latitude = declination(longitude, latitude);
+    let year = date.getFullYear();
+    let month = date.getMonth() + 1;
+    let day = date.getDate();
+
+
+    yy = year - Math.floor((12 - month) / 10);
+    mm = month + 9;
+    if (mm >= 12) {
+        mm = mm - 12;
+    }
+
+    k1 = Math.floor(365.25 * (yy + 4712));
+    k2 = Math.floor(30.6 * mm + 0.5);
+    k3 = Math.floor(Math.floor((yy / 100) + 49) * 0.75) - 38;
+
+    jd = k1 + k2 + day + 59;  // for dates in Julian calendar
+    if (jd > 2299160) {
+        jd = jd - k3;      // for Gregorian calendar
+    }
+
+    //calculate moon's age in days
+    ip = normalize((jd - 2451550.1) / 29.530588853);
+
+    ip = ip * 2 * Math.PI;  //Convert phase to radians
+
+    // Calculate moon's distance in earth radii
+    dp = 2 * Math.PI * normalize((jd - 2451562.2) / 27.55454988);
+    distance = 60.4 - 3.3 * Math.cos(dp) - 0.6 * Math.cos(2 * ip - dp) - 0.5 * Math.cos(2 * ip);
+    altitude = distance * EARTH_RADIUS;
+
+    // Calculate moon's ecliptic latitude
+    np = 2 * Math.PI * normalize((jd - 2451565.2) / 27.212220817);
+    latitude = 5.1 * Math.sin(np);
+
+    // Calculate moon's ecliptic longitude
+    rp = normalize((jd - 2451555.8) / 27.321582241);
+    longitude = 360 * rp + 6.3 * Math.sin(dp) + 1.3 * Math.sin(2 * ip - dp) + 0.7 * Math.sin(2 * ip);
 
     return {
-        longitude: longitude, latitude: latitude, distance: distance
+        longitude: longitude, latitude: latitude, altitude: altitude
     };
 }
 
@@ -211,4 +249,12 @@ function toDays(date) {
 
 function sigmoid(input) {
     return (1 / (1 + Math.exp(-input * 2 + 4)));
+}
+
+function normalize(value) {
+    value = value - Math.floor(value);
+    if (value < 0) {
+        value = value + 1;
+    }
+    return value;
 }
