@@ -52,6 +52,9 @@ const render = function () {
     // The current time for tracking (Super fast time speed in debug mode)
     let date = debug ? new Date(appStart + (new Date().getTime() - appStart) * 600) : new Date();
 
+    // Eclipse
+    // date = new Date(1607962408000);
+
     // Next frame
     requestAnimationFrame(render);
 

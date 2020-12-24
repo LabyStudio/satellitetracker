@@ -151,7 +151,7 @@ function updateSpace(date, layers) {
 
     // Calculate moon position
     let moonState = getMoonPosition(date);
-    let moonPosition = latLonDegToVector3(moonState.latitude, moonState.longitude + toRadians(90), moonState.altitude);
+    let moonPosition = latLonDegToVector3(moonState.latitude, moonState.longitude + 90, moonState.altitude);
     moon.position.set(moonPosition.x, moonPosition.y, moonPosition.z);
 
     // Update night side shader
@@ -184,8 +184,8 @@ function focusSatellite(date, satellite, cameraDistance, canSeeFocusedSatellite,
     // Update controls
     controls.zoomSpeed = cameraDistance < 200 || cameraDistance >= EARTH_RADIUS ? 1 : 8;
     //if (!debug) {
-        controls.target = new THREE.Vector3(0, focusedEarth ? centerGroup.position.y : 0, 0);
-        controls.minDistance = focusedEarth ? EARTH_RADIUS + ATMOSPHERE_HEIGHT * 8 : 10;
+    controls.target = new THREE.Vector3(0, focusedEarth ? centerGroup.position.y : 0, 0);
+    controls.minDistance = focusedEarth ? EARTH_RADIUS + ATMOSPHERE_HEIGHT * 8 : 10;
     //}
 
     // Update bump scale of earth

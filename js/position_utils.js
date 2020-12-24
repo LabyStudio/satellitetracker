@@ -16,9 +16,6 @@ const MILLISECONDS_PER_CENTURY = 1000 * 3600 * 24 * 36525.0;
 // Moon
 const rad = Math.PI / 180;
 const e = rad * 23.4397; // obliquity of the Earth
-const dayMs = 1000 * 60 * 60 * 24,
-    J1970 = 2440588,
-    J2000 = 2451545;
 
 // ################ SUN ################
 
@@ -132,6 +129,8 @@ function getMoonPosition(date) { // geocentric ecliptic coordinates of the moon
     rp = normalize((jd - 2451555.8) / 27.321582241);
     longitude = 360 * rp + 6.3 * Math.sin(dp) + 1.3 * Math.sin(2 * ip - dp) + 0.7 * Math.sin(2 * ip);
 
+    altitude = EARTH_RADIUS;
+
     return {
         longitude: longitude, latitude: latitude, altitude: altitude
     };
@@ -225,26 +224,6 @@ function lookAtThreeJs(location, target) {
 
     // Extract the rotation of the dummy object
     return dummy.rotation;
-}
-
-function rightAscension(l, b) {
-    return Math.atan2(Math.sin(l) * Math.cos(e) - Math.tan(b) * Math.sin(e), Math.cos(l));
-}
-
-function declination(l, b) {
-    return Math.asin(Math.sin(b) * Math.cos(e) + Math.cos(b) * Math.sin(e) * Math.sin(l));
-}
-
-function toJulian(date) {
-    return date.valueOf() / dayMs - 0.5 + J1970;
-}
-
-function fromJulian(j) {
-    return new Date((j + 0.5 - J1970) * dayMs);
-}
-
-function toDays(date) {
-    return toJulian(date) - J2000;
 }
 
 function sigmoid(input) {
