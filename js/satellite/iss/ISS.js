@@ -1,4 +1,4 @@
-class ISS {
+window.ISS = class {
     static get ID() {
         return 25544;
     }

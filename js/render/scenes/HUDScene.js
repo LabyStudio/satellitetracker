@@ -1,4 +1,4 @@
-class HUDScene {
+window.HUDScene = class {
 
     constructor(satelliteTracker) {
         this.satelliteTracker = satelliteTracker;

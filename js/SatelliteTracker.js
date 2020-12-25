@@ -1,4 +1,4 @@
-class SatelliteTracker {
+window.SatelliteTracker = class {
 
     constructor() {
         this.gltfLoader = new THREE.GLTFLoader();

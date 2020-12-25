@@ -1,4 +1,4 @@
-class SpaceScene {
+window.SpaceScene = class {
 
     constructor(satelliteTracker, renderer) {
         this.satelliteTracker = satelliteTracker;

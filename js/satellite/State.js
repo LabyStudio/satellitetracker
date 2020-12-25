@@ -1,4 +1,4 @@
-class State {
+window.State = class {
     static get DOCKED() {
         return "docked";
     }

@@ -1,4 +1,4 @@
-class Satellite {
+window.Satellite = class {
     constructor(satelliteTracker, tle, callback, state = "default") {
         this.satelliteTracker = satelliteTracker;
 

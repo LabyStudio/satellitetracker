@@ -1,7 +1,7 @@
 // https://celestrak.com/satcat/tle.php?CATNR=25544
 // https://celestrak.com/pub/TLE/catalog.txt
 
-class SatelliteRegistry {
+window.SatelliteRegistry = class {
     constructor(satelliteTracker, databaseFile) {
         this.satelliteTracker = satelliteTracker;
         this.databaseFile = databaseFile;

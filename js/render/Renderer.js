@@ -1,4 +1,4 @@
-class Renderer {
+window.Renderer = class {
 
     constructor(satelliteTracker) {
         this.satelliteTracker = satelliteTracker;
