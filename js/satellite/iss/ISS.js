@@ -37,13 +37,8 @@ class ISS {
         return new Port("AFT",0, 0.4, -32.0, 90, 0, 180);
     }
 
-    static createSpacecraft(tle) {
-        let satellite = new Satellite(tle, function (loaded, progress) {
-            initializePercentage = progress;
-            if (loaded) {
-                initializationCompleted();
-            }
-        }, "main");
+    static createSpacecraft(satelliteTracker, tle, progressCallback) {
+        let satellite = new Satellite(satelliteTracker, tle, progressCallback, "main");
 
         // Add solar array rod
         satellite.dock(25544, "Solar Rod", null, "solar_array_rod", function (model, date, satellite) {

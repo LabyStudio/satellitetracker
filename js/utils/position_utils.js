@@ -129,7 +129,8 @@ function getMoonPosition(date) { // geocentric ecliptic coordinates of the moon
     rp = normalize((jd - 2451555.8) / 27.321582241);
     longitude = 360 * rp + 6.3 * Math.sin(dp) + 1.3 * Math.sin(2 * ip - dp) + 0.7 * Math.sin(2 * ip);
 
-    altitude = EARTH_RADIUS;
+    // Debugging
+    // altitude = EARTH_RADIUS;
 
     return {
         longitude: longitude, latitude: latitude, altitude: altitude

@@ -29,43 +29,13 @@
     <!-- Preload custom fonts -->
     <comment style="font-family: 'FoundryGridnik', cursive; line-height: 0"></comment>
 </head>
+
+<!-- Canvas -->
 <body>
 <canvas id="space-canvas"></canvas>
 </body>
 
-<!-- Utils -->
-<script src="js/utils/satellite.min.js"></script>
-<script src="js/utils/jquery.min.js"></script>
-<script src="js/utils/three.min.js"></script>
-<script src="js/utils/OrbitControls.js"></script>
-<script src="js/utils/GLTFLoader.js"></script>
-<script src="js/utils/lensflare.js"></script>
-<script src="js/utils/three-text2d.min.js"></script>
-
-<!-- Scripts -->
-<script src="js/position_utils.js"></script>
-<script src="js/Satellite.js"></script>
-<script src="js/Registry.js"></script>
-<script src="js/ISS.js"></script>
-<script src="js/state.js"></script>
-<script src="js/scenes/space_scene.js"></script>
-<script src="js/scenes/hud_scene.js"></script>
-<script src="js/render_engine.js"></script>
-
-<!-- Browser Support Check -->
-<script>
-    function isES6() {
-        try {
-            Function("() => {};");
-            return true;
-        } catch (exception) {
-            return false;
-        }
-    }
-
-    if (!isES6()) {
-        alert("Your browser isn't supported! Please use another one.");
-    }
-</script>
+<!-- Script -->
+<script src="js/main.js"></script>
 
 </html>

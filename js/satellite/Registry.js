@@ -1,12 +1,12 @@
 // https://celestrak.com/satcat/tle.php?CATNR=25544
 // https://celestrak.com/pub/TLE/catalog.txt
 
-let satellites = [];
-
 class SatelliteRegistry {
-    constructor(databaseFile) {
+    constructor(satelliteTracker, databaseFile) {
+        this.satelliteTracker = satelliteTracker;
         this.databaseFile = databaseFile;
         this.database = [];
+        this.satellites = [];
     }
 
     /**
@@ -45,7 +45,7 @@ class SatelliteRegistry {
 
     spawnSatellite(satellite, save = true) {
         satellite.addModels(this.earthGroup, this.foreground);
-        satellites.push(satellite);
+        this.satellites.push(satellite);
 
         if (save) {
             this.saveUserCatalog();
@@ -55,19 +55,19 @@ class SatelliteRegistry {
     destroySatellite(satelliteToDestroy) {
         // Remove satellite from list
         let newSatellites = [];
-        Object.values(satellites).forEach(satellite => {
+        Object.values(this.satellites).forEach(satellite => {
             if (satellite !== satelliteToDestroy) {
                 newSatellites.push(satellite);
             }
         });
-        satellites = newSatellites;
+        this.satellites = newSatellites;
 
         // Destroy models from scene
         satelliteToDestroy.destroyModels(this.earthGroup, this.foreground);
 
         // New focused satellite
-        if (focusedSatellite === satelliteToDestroy) {
-            setFocusedSatellite(satellites[0]);
+        if (this.satelliteTracker.focusedSatellite === satelliteToDestroy) {
+            this.satelliteTracker.setFocusedSatellite(this.satellites[0]);
         }
 
         this.saveUserCatalog();
@@ -76,7 +76,7 @@ class SatelliteRegistry {
     // Store catalog
     saveUserCatalog() {
         let catalog = "";
-        Object.values(satellites).forEach(satellite => {
+        Object.values(this.satellites).forEach(satellite => {
             if (parseInt(satellite.id) !== ISS.ID) {
                 Object.values(satellite.tle).forEach(line => {
                     catalog += line + "\n";
@@ -91,7 +91,7 @@ class SatelliteRegistry {
         let data = getCookie("catalog");
         if (data != null) {
             this.extractTLE(decodeURIComponent(data), function (name, id, tle) {
-                scope.spawnSatellite(new Satellite(tle));
+                scope.spawnSatellite(new Satellite(scope.satelliteTracker, tle));
             });
         }
     }
