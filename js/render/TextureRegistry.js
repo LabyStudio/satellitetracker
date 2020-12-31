@@ -21,7 +21,7 @@ window.TextureRegistry = class {
         this.push("earth_spec", "assets/img/earth_spec.jpg");
         this.push("cloud_map", "assets/img/cloud_map.png");
         this.push("galaxy_starfield", "assets/img/galaxy_starfield.jpg");
-        this.push("earth_night_map", "assets/img/earth_night_map_large.jpg");
+        this.push("earth_night_map", "assets/img/earth_night_map.jpg");
 
         this.totalPercentage = this.length() * 100;
         this.updateProgress("Preparing textures", 0);

@@ -33,10 +33,11 @@ window.SpaceScene = class {
         foreground.add(nightLight.clone());
 
         // Sun light
-        const reflectionLight = new THREE.DirectionalLight(0xffffff, 2.0);
-        this.sunGroup.add(reflectionLight);
+        const sunLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        sunLight.castShadow = true;
+        this.sunGroup.add(sunLight);
         // Copy sun to foreground for lightning
-        foreground.add(this.sunForeground = reflectionLight.clone());
+        foreground.add(this.sunForeground = sunLight.clone());
 
         // Moon
         const moonGeometry = new THREE.SphereBufferGeometry(MOON_RADIUS, 32, 32);
@@ -54,7 +55,7 @@ window.SpaceScene = class {
         lensflare.addElement(new THREE.LensflareElement(textureFlareLens, 70, 0.7));
         lensflare.addElement(new THREE.LensflareElement(textureFlareLens, 120, 0.9));
         lensflare.addElement(new THREE.LensflareElement(textureFlareLens, 70, 1));
-        reflectionLight.add(lensflare);
+        sunLight.add(lensflare);
 
         // Earth
         const earthGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS, 64, 64);
