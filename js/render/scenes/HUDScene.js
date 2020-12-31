@@ -58,8 +58,8 @@ window.HUDScene = class {
     }
 
     initHUDSize(hudCanvas, cameraHUD) {
-        let width = window.innerWidth;
-        let height = window.innerHeight;
+        let width = this.satelliteTracker.renderer.canvasWidth;
+        let height = this.satelliteTracker.renderer.canvasHeight;
 
         hudCanvas.width = width;
         hudCanvas.height = height;
@@ -76,14 +76,14 @@ window.HUDScene = class {
         if (this.context == null || this.hudTexture == null)
             return;
 
-        let width = window.innerWidth;
-        let height = window.innerHeight;
+        let width = this.satelliteTracker.renderer.canvasWidth;
+        let height = this.satelliteTracker.renderer.canvasHeight;
 
         // Clear & update screen
         this.context.clearRect(0, 0, width, height);
         this.hudTexture.needsUpdate = true;
 
-        if (this.satelliteTracker.initialized) {
+        if (this.satelliteTracker.loadingProgress.isReady()) {
             let focusedSatellite = this.satelliteTracker.getFocusedSatellite();
             if (focusedSatellite !== undefined) {
                 let dockingAvailable = focusedSatellite.docking.length > 0;
@@ -101,7 +101,7 @@ window.HUDScene = class {
                     this.drawDockingButton(width - 50, height - 100, 40, mouseX, mouseY);
                 }
 
-                if (!this.satelliteTracker.isMobile) {
+                if (!this.satelliteTracker.renderer.isMobile) {
                     // Draw telemetry in the bottom left
                     this.drawTelemetry(focusedSatellite, 0, height - 150, 500, 150, date);
 
@@ -113,16 +113,35 @@ window.HUDScene = class {
             }
 
             // Draw satellite list
-            this.drawSatelliteList(3, height - (this.satelliteTracker.isMobile ? 10 : 160), mouseX, mouseY);
+            this.drawSatelliteList(3, height - (this.satelliteTracker.renderer.isMobile ? 10 : 160), mouseX, mouseY);
 
             // Add satellite menu
             if (this.flagAddSatelliteMenuOpen) {
-                this.drawAddSatelliteMenu(width / 2, height / 6, this.satelliteTracker.isMobile ? width - 20 : Math.max(400, width / 3), 50, mouseX, mouseY);
+                this.drawAddSatelliteMenu(width / 2, height / 6, this.satelliteTracker.renderer.isMobile ? width - 20 : Math.max(400, width / 3), 50, mouseX, mouseY);
             }
         } else {
-            let status = (this.satelliteTracker.initializePercentage < 100 ? "Loading resources " + Math.round(this.satelliteTracker.initializePercentage) + "%" : "Initializing...");
-            this.drawCenteredText(width / 2, height / 2, status, '#ffffff', 30, false);
-            this.drawProgressbar(width / 2 - 100, height / 2 + 30, 200, 3, this.satelliteTracker.initializePercentage);
+            // Cover unfinished scene
+            this.drawRect(0, 0, width, height, '#000000');
+
+            // Render progress bars
+            let progressLoader = this.satelliteTracker.loadingProgress;
+
+            // Calculate y position
+            let listY = -(60 * progressLoader.getModuleAmount()) / 2;
+
+            // Render all progress states
+            for (let module in progressLoader.progress) {
+                let [progress, state] = progressLoader.getProgressState(module);
+
+                // Hide progress element if it's fully loaded
+                if (progress < 100) {
+                    // Draw progress state, percentage and bar
+                    this.drawCenteredText(width / 2, height / 2 + listY, state + " " + parseInt(progress) + "%", '#ffffff', 25, false);
+                    this.drawProgressbar(width / 2 - 100, height / 2 + 15 + listY, 200, 3, progress);
+
+                    listY += 60;
+                }
+            }
         }
     }
 
@@ -140,7 +159,7 @@ window.HUDScene = class {
 
         // Click on search bar
         if (this.hoverAddSatelliteMenu) {
-            if (this.satelliteTracker.isMobile) {
+            if (this.satelliteTracker.renderer.isMobile) {
                 let promptString = prompt("Satellite name");
                 if (promptString !== null) {
                     this.stringSearchQuery = promptString;
@@ -580,7 +599,6 @@ window.HUDScene = class {
             this.context.stroke();
         }
     }
-
 
     drawAlignmentText(x, y, string, color, size, alignment, bold) {
         this.context.font = (bold ? "bold" : "normal") + " " + size + "px FoundryGridnik";

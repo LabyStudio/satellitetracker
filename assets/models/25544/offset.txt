@@ -8,3 +8,8 @@ Without bottom modules:
 x 0
 y 6030,39
 z 6470.86
+
+
+
+Compression
+gltf-pipeline -i main.glb -d

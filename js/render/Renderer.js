@@ -1,7 +1,8 @@
 window.Renderer = class {
 
-    constructor(satelliteTracker) {
+    constructor(satelliteTracker, canvasWrapperId) {
         this.satelliteTracker = satelliteTracker;
+        this.canvasWrapperId = canvasWrapperId;
         this.supportWebGL = !!WebGLRenderingContext && (!!document.createElement('canvas').getContext('experimental-webgl')
             || !!document.createElement('canvas').getContext('webgl'));
 
@@ -20,13 +21,16 @@ window.Renderer = class {
         // We will use 2D canvas element to render our HUD.
         this.hudCanvas = document.createElement('canvas')
 
+        // Update canvas size
+        this.updateCanvasSize();
+
         // Create cameras
-        this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1 /* Updated in space_scene */, 10000000000000);
+        this.camera = new THREE.PerspectiveCamera(50, this.canvasWidth / this.canvasHeight, 1 /* Updated in space_scene */, 10000000000000);
         this.cameraHUD = new THREE.OrthographicCamera(0, 0, 0, 0, 0, 30);
 
-        // Setup renderer
-        this.canvasElement = document.getElementById("space-canvas");
-        this.renderer = this.supportWebGL ? new THREE.WebGLRenderer({
+        // Create web renderer
+        this.canvasElement = document.createElement('canvas')
+        this.webRenderer = this.supportWebGL ? new THREE.WebGLRenderer({
             canvas: this.canvasElement,
             antialias: true
         }) : new THREE.CanvasRenderer({
@@ -34,15 +38,19 @@ window.Renderer = class {
             antialias: true
         });
 
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
-        this.renderer.autoClear = false;
-        this.renderer.setClearColor(0x000000, 0);
-        this.renderer.clear();
+        // Add web renderer canvas to wrapper
+        document.getElementById(this.canvasWrapperId).appendChild(this.canvasElement);
+
+        // Setup renderer
+        this.webRenderer.setSize(this.canvasWidth, this.canvasHeight);
+        this.webRenderer.shadowMap.enabled = true;
+        this.webRenderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
+        this.webRenderer.autoClear = false;
+        this.webRenderer.setClearColor(0x000000, 0);
+        this.webRenderer.clear();
 
         // Create controls
-        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls = new THREE.OrbitControls(this.camera, this.webRenderer.domElement);
         this.controls.enablePan = this.satelliteTracker.debug;
         this.controls.enableDamping = true
         this.controls.dampingFactor = 0.06;
@@ -57,6 +65,9 @@ window.Renderer = class {
     }
 
     render() {
+        // Start stats
+        this.satelliteTracker.stats.begin();
+
         // The current time for tracking (Super fast time speed in debug mode)
         let date = this.satelliteTracker.debug ? new Date(this.appStart + (new Date().getTime() - this.appStart) * 600) : new Date();
 
@@ -65,7 +76,7 @@ window.Renderer = class {
 
         // Next frame
         let scope = this;
-        requestAnimationFrame(function() {
+        requestAnimationFrame(function () {
             scope.render();
         });
 
@@ -76,22 +87,24 @@ window.Renderer = class {
         this.satelliteTracker.spaceScene.updateSpace(date, this.layers);
         this.satelliteTracker.hudScene.updateHUD(date, this.mouseX, this.mouseY);
 
-        // Render scenes
-        if (this.satelliteTracker.initialized) {
-            // Render background
-            this.camera.near = 70000;
-            this.camera.updateProjectionMatrix();
-            this.renderer.render(this.layers.background, this.camera);
+        // Render background
+        this.camera.near = 70000;
+        this.camera.updateProjectionMatrix();
+        this.webRenderer.render(this.layers.background, this.camera);
 
-            this.renderer.clearDepth();
+        // New render order for the foreground layer
+        this.webRenderer.clearDepth();
 
-            // Render foreground
-            this.camera.near = 1;
-            this.camera.updateProjectionMatrix();
-            this.renderer.render(this.layers.foreground, this.camera);
-        }
+        // Render foreground
+        this.camera.near = 1;
+        this.camera.updateProjectionMatrix();
+        this.webRenderer.render(this.layers.foreground, this.camera);
 
-        this.renderer.render(this.sceneHUD, this.cameraHUD);
+        // Render HUD
+        this.webRenderer.render(this.sceneHUD, this.cameraHUD);
+
+        // End stats
+        this.satelliteTracker.stats.end();
     };
 
     registerListener() {
@@ -101,7 +114,7 @@ window.Renderer = class {
         window.addEventListener('resize', event => scope.onWindowResize(event), false);
 
         // Mouse click listener
-        let dom = this.renderer.domElement;
+        let dom = this.webRenderer.domElement;
         dom.addEventListener("click", event => scope.onClick(event), true);
         dom.addEventListener("touchstart", event => scope.onTouchStart(event), true);
         dom.addEventListener("touchend", event => scope.onTouchEnd(event), true);
@@ -111,14 +124,23 @@ window.Renderer = class {
         window.addEventListener('keydown', event => scope.onKeyDown(event), false);
     }
 
+    updateCanvasSize() {
+        // Get canvas size
+        let canvasElement = document.getElementById(this.canvasWrapperId);
+        this.canvasWidth = canvasElement.offsetWidth;
+        this.canvasHeight = canvasElement.offsetHeight;
+    }
+
     onWindowResize() {
+        this.updateCanvasSize();
+
         // Recreate Hud scene on resize
         this.sceneHUD = this.satelliteTracker.hudScene.createHUDScene(this.hudCanvas, this.cameraHUD);
 
         // Adjust camera
-        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.aspect = this.canvasWidth / this.canvasHeight;
         this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.webRenderer.setSize(this.canvasWidth, this.canvasHeight);
     }
 
     onTouchStart(event) {
@@ -133,7 +155,7 @@ window.Renderer = class {
 
     detectTouchDevice() {
         let match = window.matchMedia || window.msMatchMedia;
-        if(match) {
+        if (match) {
             let mq = match("(pointer:coarse)");
             return mq.matches;
         }
@@ -156,8 +178,8 @@ window.Renderer = class {
     onClick(event) {
         this.satelliteTracker.hudScene.onClickScreen(event.clientX, event.clientY);
 
-        this.mouse.x = (event.clientX /this. renderer.domElement.clientWidth) * 2 - 1;
-        this.mouse.y = -(event.clientY / this.renderer.domElement.clientHeight) * 2 + 1;
+        this.mouse.x = (event.clientX / this.webRenderer.domElement.clientWidth) * 2 - 1;
+        this.mouse.y = -(event.clientY / this.webRenderer.domElement.clientHeight) * 2 + 1;
 
         this.raycaster.setFromCamera(this.mouse, this.camera);
 
@@ -177,5 +199,4 @@ window.Renderer = class {
     onKeyDown(event) {
         this.satelliteTracker.hudScene.onKeyDownScreen(event.key, event.keyCode, event.ctrlKey);
     }
-
 }

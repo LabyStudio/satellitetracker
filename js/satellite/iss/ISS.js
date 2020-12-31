@@ -38,7 +38,7 @@ window.ISS = class {
     }
 
     static createSpacecraft(satelliteTracker, tle, progressCallback) {
-        let satellite = new Satellite(satelliteTracker, tle, progressCallback, "main");
+        let satellite = new Satellite(satelliteTracker, tle, progressCallback, "main-compressed");
 
         // Add solar array rod
         satellite.dock(25544, "Solar Rod", null, "solar_array_rod", function (model, date, satellite) {

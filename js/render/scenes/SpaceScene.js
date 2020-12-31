@@ -42,12 +42,12 @@ window.SpaceScene = class {
         const moonGeometry = new THREE.SphereBufferGeometry(MOON_RADIUS, 32, 32);
         const moonMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
         this.moon = new THREE.Mesh(moonGeometry, moonMaterial);
-        moonMaterial.map = this.satelliteTracker.textureLoader.load('assets/img/moon_map.jpg');
+        moonMaterial.map = this.satelliteTracker.textureRegistry.get('moon_map');
         this.earthGroup.add(this.moon);
 
         // Add sun flare
-        let textureFlareLens = this.satelliteTracker.textureLoader.load("assets/img/lensflares/lens_flare.png");
-        let textureFlareSun = this.satelliteTracker.textureLoader.load("assets/img/lensflares/sun_flare.png");
+        let textureFlareLens = this.satelliteTracker.textureRegistry.get("lens_flare");
+        let textureFlareSun = this.satelliteTracker.textureRegistry.get("sun_flare");
         let lensflare = new THREE.Lensflare();
         lensflare.addElement(new THREE.LensflareElement(textureFlareSun, 160, 0.0));
         lensflare.addElement(new THREE.LensflareElement(textureFlareLens, 60, 0.6));
@@ -60,10 +60,23 @@ window.SpaceScene = class {
         const earthGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS, 64, 64);
         const earthMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
         this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
-        earthMaterial.map = this.satelliteTracker.textureLoader.load('assets/img/earth_map.jpg');
+        earthMaterial.map = this.satelliteTracker.textureRegistry.get('earth_map',
+            // Function when resource is loaded
+            function (texture) {
+                console.log(texture);
+                console.log('Loading completed');
+            },
+            // Function called when download progresses
+            function (xhr) {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            },
+            // Function called when download errors
+            function (xhr) {
+                console.log('An error happened');
+            });
         earthMaterial.map.minFilter = THREE.LinearFilter;
-        earthMaterial.bumpMap = this.satelliteTracker.textureLoader.load('assets/img/earth_bump.jpg');
-        earthMaterial.specularMap = this.satelliteTracker.textureLoader.load('assets/img/earth_spec.jpg');
+        earthMaterial.bumpMap = this.satelliteTracker.textureRegistry.get('earth_bump');
+        earthMaterial.specularMap = this.satelliteTracker.textureRegistry.get('earth_spec');
         earthMaterial.specular = new THREE.Color(0x050505);
         earthMaterial.shininess = 10;
         earthMaterial.polygonOffset = true;
@@ -90,7 +103,7 @@ window.SpaceScene = class {
             opacity: 0.8
         });
         this.clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
-        cloudsMaterial.map = this.satelliteTracker.textureLoader.load('assets/img/cloud_map.png');
+        cloudsMaterial.map = this.satelliteTracker.textureRegistry.get('cloud_map');
         this.clouds.castShadow = true;
         this.clouds.receiveShadow = true;
         this.earthGroup.add(this.clouds);
@@ -108,7 +121,7 @@ window.SpaceScene = class {
         const starsGeometry = new THREE.SphereBufferGeometry(SUN_DISTANCE * 2, 32, 32);
         const starsMaterial = new THREE.MeshBasicMaterial();
         const stars = new THREE.Mesh(starsGeometry, starsMaterial);
-        starsMaterial.map = this.satelliteTracker.textureLoader.load('assets/img/galaxy_starfield.jpg');
+        starsMaterial.map = this.satelliteTracker.textureRegistry.get('galaxy_starfield');
         starsMaterial.side = THREE.BackSide;
         this.centerGroup.add(stars);
 
@@ -267,7 +280,7 @@ window.SpaceScene = class {
             loader.load("assets/shaders/nightside.vert", function (vertexShader) {
                 const uniforms = {
                     viewVector: {value: new THREE.Vector3(0, 0, 0)},
-                    nightTexture: {value: scope.satelliteTracker.textureLoader.load("assets/img/earth_night_map.jpg")},
+                    nightTexture: {value: scope.satelliteTracker.textureRegistry.get('earth_night_map')},
                 };
 
                 const material = new THREE.ShaderMaterial({

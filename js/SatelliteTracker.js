@@ -1,21 +1,51 @@
 window.SatelliteTracker = class {
 
-    constructor() {
+    constructor(canvasWrapperId) {
         this.gltfLoader = new THREE.GLTFLoader();
+
+        // THREE texture loader
         this.textureLoader = new THREE.TextureLoader();
         this.textureLoader.crossOrigin = "";
 
+        // Init loading progress
+        let scope = this;
+        this.loadingProgress = new LoadingProgress({
+            "texture": "Loading Textures...",
+            "model": "Loading ISS model..."
+        }, function () {
+            scope.initializationCompleted();
+        });
+
+        // Create texture registry
+        this.textureRegistry = new TextureRegistry(this, function (state, progress) {
+            scope.loadingProgress.updateProgress("texture", progress);
+            scope.loadingProgress.updateState("texture", state);
+        });
+
+        // Provide a DRACOLoader instance to decode compressed mesh data
+        let dracoLoader = new THREE.DRACOLoader();
+        dracoLoader.setDecoderPath('js/utils/three/decoder/');
+        dracoLoader.preload();
+        this.gltfLoader.setDRACOLoader(dracoLoader);
+
+        // States
         this.focusedEarth = false;
         this.debug = false;
         this.focusedSatellite = null;
-
-        this.initialized = false;
-        this.initializePercentage = 0;
         this.initializeTime = null;
+
+        // Stats
+        this.stats = new Stats();
+
+        // Show fps
+        if (window.location.hash === "#fps") {
+            this.stats.showPanel(0);
+            document.body.appendChild(this.stats.dom);
+        }
 
         // Create
         this.registry = new SatelliteRegistry(this, "php/catalog.php");
-        this.renderer = new Renderer(this);
+        this.renderer = new Renderer(this, canvasWrapperId);
         this.spaceScene = new SpaceScene(this, this.renderer);
         this.hudScene = new HUDScene(this);
 
@@ -31,9 +61,10 @@ window.SatelliteTracker = class {
         // Create ISS spacecraft
         this.registry.loadLocalTLE(ISS.ID, function (tle) {
             let satellite = ISS.createSpacecraft(scope, tle, function (loaded, progress) {
-                scope.initializePercentage = progress;
-                if (loaded) {
-                    scope.initializationCompleted();
+                scope.loadingProgress.updateProgress("model", loaded ? 100 : Math.min(99, progress));
+
+                if (progress >= 100) {
+                    scope.loadingProgress.updateState("model", "Initializing model...")
                 }
             });
             scope.registry.spawnSatellite(satellite, false);
@@ -50,12 +81,6 @@ window.SatelliteTracker = class {
     }
 
     initializationCompleted() {
-        // Trigger scene load before finishing the initialization
-        this.renderer.renderer.render(this.renderer.layers.background, this.renderer.camera);
-        this.renderer.renderer.render(this.renderer.layers.foreground, this.renderer.camera);
-
-        this.initialized = true;
-        this.initializePercentage = 100;
         this.initializeTime = new Date().getTime();
     }
 
