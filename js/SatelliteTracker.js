@@ -84,8 +84,6 @@ window.SatelliteTracker = class {
         this.initializeTime = new Date().getTime();
     }
 
-// ################### API ###################
-
     /**
      * Current camera focused satellite
      * @returns Satellite

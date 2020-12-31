@@ -59,6 +59,7 @@ loadScripts([
     "js/utils/position_utils.js",
     "js/satellite/Registry.js",
     "js/satellite/Satellite.js",
+    "js/satellite/SatellitePositionAtTime.js",
     "js/satellite/SatelliteModel.js",
     "js/satellite/Port.js",
     "js/satellite/State.js",

@@ -1,4 +1,3 @@
-
 window.SatelliteModel = class {
     static get EMPTY_LOAD_CALLBACK() {
         return function (loaded, progress) {

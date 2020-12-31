@@ -127,7 +127,7 @@ window.HUDScene = class {
             let progressLoader = this.satelliteTracker.loadingProgress;
 
             // Calculate y position
-            let listY = -(60 * progressLoader.getModuleAmount()) / 2;
+            let listY = -(60 * progressLoader.getModuleAmount()) / 2 + 28;
 
             // Render all progress states
             for (let module in progressLoader.progress) {
