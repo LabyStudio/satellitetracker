@@ -60,24 +60,12 @@ window.SpaceScene = class {
         const earthGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS, 64, 64);
         const earthMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
         this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
-        earthMaterial.map = this.satelliteTracker.textureRegistry.get('earth_map',
-            // Function when resource is loaded
-            function (texture) {
-                console.log(texture);
-                console.log('Loading completed');
-            },
-            // Function called when download progresses
-            function (xhr) {
-                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-            },
-            // Function called when download errors
-            function (xhr) {
-                console.log('An error happened');
-            });
-        earthMaterial.map.minFilter = THREE.LinearFilter;
-        earthMaterial.bumpMap = this.satelliteTracker.textureRegistry.get('earth_bump');
+        earthMaterial.map = this.satelliteTracker.textureRegistry.get('earth_map');
+        earthMaterial.bumpMap  = this.satelliteTracker.textureRegistry.get('earth_bump');
+        earthMaterial.normalMap  = this.satelliteTracker.textureRegistry.get('earth_normal');
         earthMaterial.specularMap = this.satelliteTracker.textureRegistry.get('earth_spec');
         earthMaterial.specular = new THREE.Color(0x050505);
+        earthMaterial.normalScale = new THREE.Vector2(0.4, 0.4);
         earthMaterial.shininess = 10;
         earthMaterial.polygonOffset = true;
         earthMaterial.polygonOffsetFactor = 2;
@@ -275,12 +263,16 @@ window.SpaceScene = class {
     createNightLightMaterial(callback) {
         let scope = this;
 
+        let nightTexture = scope.satelliteTracker.textureRegistry.get('earth_night_map');
+        nightTexture.magFilter = THREE.LinearFilter;
+        nightTexture.minFilter = THREE.LinearMipMapLinearFilter;
+
         const loader = new THREE.FileLoader();
         loader.load("assets/shaders/nightside.frag", function (fragmentShader) {
             loader.load("assets/shaders/nightside.vert", function (vertexShader) {
                 const uniforms = {
                     viewVector: {value: new THREE.Vector3(0, 0, 0)},
-                    nightTexture: {value: scope.satelliteTracker.textureRegistry.get('earth_night_map')},
+                    nightTexture: {value: nightTexture},
                 };
 
                 const material = new THREE.ShaderMaterial({

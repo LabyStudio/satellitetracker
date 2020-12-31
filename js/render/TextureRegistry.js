@@ -17,10 +17,11 @@ window.TextureRegistry = class {
         this.push("sun_flare", "assets/img/lensflares/sun_flare.png");
         this.push("earth_map", "assets/img/earth_map.jpg");
         this.push("earth_bump", "assets/img/earth_bump.jpg");
+        this.push("earth_normal", "assets/img/earth_normal.jpg");
         this.push("earth_spec", "assets/img/earth_spec.jpg");
         this.push("cloud_map", "assets/img/cloud_map.png");
         this.push("galaxy_starfield", "assets/img/galaxy_starfield.jpg");
-        this.push("earth_night_map", "assets/img/earth_night_map.jpg");
+        this.push("earth_night_map", "assets/img/earth_night_map_large.jpg");
 
         this.totalPercentage = this.length() * 100;
         this.updateProgress("Preparing textures", 0);
