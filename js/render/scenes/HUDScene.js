@@ -22,7 +22,7 @@ window.HUDScene = class {
         this.stringSearchQuery = "";
 
         this.showDockingInformation = false;
-        this.showTimeline = true;
+        this.showTimeline = false;
         this.timeMouseClickedX = 0;
         this.timeMouseDragX = 0;
         this.timePrevSpeed = 0;
