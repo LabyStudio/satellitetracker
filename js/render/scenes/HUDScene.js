@@ -309,7 +309,7 @@ window.HUDScene = class {
         let mouseOver = this.hoverToggleEarthFocusButton = mouseX > x && mouseX < x + size && mouseY > y && mouseY < y + size;
         let offset = mouseOver ? 1 : 0;
 
-        this.drawImage(this.satelliteTracker.focusedEarth ? this.textureSatellite : this.textureEarth, x - offset, y - offset, size + offset * 2, size + offset * 2, mouseOver ? 0.8 : 0.3);
+        this.drawImage(this.satelliteTracker.focusedEarth ? this.textureSatellite : this.textureEarth, x - offset, y - offset, size + offset * 2, size + offset * 2, mouseOver ? 0.8 : 0.5);
         if (mouseOver) {
             this.drawRightText(x - 5, y + size / 2 + 4, "Focus " + (this.satelliteTracker.focusedEarth ? "Satellite" : "Earth"), '#ffffff', 20, false);
         }
@@ -319,7 +319,7 @@ window.HUDScene = class {
         let mouseOver = this.hoverToggleDockingButton = mouseX > x && mouseX < x + size && mouseY > y && mouseY < y + size;
         let offset = mouseOver ? 1 : 0;
 
-        this.drawImage(this.textureDock, x - offset, y - offset, size + offset * 2, size + offset * 2, mouseOver ? 0.8 : 0.3);
+        this.drawImage(this.textureDock, x - offset, y - offset, size + offset * 2, size + offset * 2, mouseOver ? 0.8 : 0.5);
         if (mouseOver) {
             this.drawRightText(x - 5, y + size / 2 + 4, (this.showDockingInformation ? "Hide" : "Show") + " docking information", '#ffffff', 20, false);
         }
@@ -329,7 +329,7 @@ window.HUDScene = class {
         let mouseOver = this.hoverToggleTimeButton = mouseX > x && mouseX < x + size && mouseY > y && mouseY < y + size;
         let offset = mouseOver ? 1 : 0;
 
-        this.drawImage(this.textureTime, x - offset, y - offset, size + offset * 2, size + offset * 2, mouseOver ? 0.8 : 0.3);
+        this.drawImage(this.textureTime, x - offset, y - offset, size + offset * 2, size + offset * 2, mouseOver ? 0.8 : 0.5);
         if (mouseOver) {
             this.drawRightText(x - 5, y + size / 2 + 4, (this.showTimeline ? "Hide" : "Show") + " speed settings", '#ffffff', 20, false);
         }
@@ -612,7 +612,7 @@ window.HUDScene = class {
         this.hoverTimeline = mouseX > x && mouseX < x + width && mouseY > y && mouseY < y + height;
 
         // Live state
-        let color = isLive ? '#ff0000' :  this.hoverLive ? '#ffffff' : '#888888';
+        let color = isLive ? '#ff0000' : this.hoverLive ? '#ffffff' : '#888888';
         this.drawRoundRect(x + width / 2 + 100, y + height + 5, 6 * 2, 6 * 2, 6, 0, color, color);
         this.drawText(x + width / 2 + 115, y + height + 17, "LIVE", color, 20, isLive);
     }
@@ -845,6 +845,9 @@ window.HUDScene = class {
 
     drawImage(image, x, y, width, height, alpha = 1.0) {
         this.context.globalAlpha = alpha;
+        this.context.filter = 'invert(1) blur(5px)';
+        this.context.drawImage(image, x + 3, y + 3, width, height);
+        this.context.filter = 'invert(0) blur(0px)';
         this.context.drawImage(image, x, y, width, height);
         this.context.globalAlpha = 1.0;
     }
