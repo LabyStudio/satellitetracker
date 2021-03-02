@@ -1,4 +1,4 @@
-![SatelliteTracker](.artwork/header.png)
+[![SatelliteTracker](.artwork/header.png)](https://satellitetracker.net)
 
 A real-time satellite tracker in 3D.<br>
 [satellitetracker.net](https://satellitetracker.net)
