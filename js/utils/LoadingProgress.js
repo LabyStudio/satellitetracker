@@ -1,6 +1,7 @@
 window.LoadingProgress = class {
 
-    constructor(modules, readyCallback) {
+    constructor(satelliteTracker, modules, readyCallback) {
+        this.satelliteTracker = satelliteTracker;
         this.progress = [];
         this.states = [];
         this.timestamps = [];
@@ -10,14 +11,14 @@ window.LoadingProgress = class {
         for (let module in modules) {
             this.progress[module] = 0;
             this.states[module] = modules[module];
-            this.timestamps[module] = new Date().getTime();
+            this.timestamps[module] = this.satelliteTracker.getBrowserTime();
         }
     }
 
     updateProgress(module, progress) {
         // Update timestamp on progress change, currently unused
         if (this.progress[module] !== progress) {
-            this.timestamps[module] = new Date().getTime();
+            this.timestamps[module] = this.satelliteTracker.getBrowserTime();
         }
 
         // Update progress

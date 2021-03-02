@@ -10,8 +10,11 @@ window.HUDScene = class {
         this.hoverSatellite = null;
         this.hoverToggleEarthFocusButton = false;
         this.hoverToggleDockingButton = false;
+        this.hoverToggleTimeButton = false;
         this.hoverAddSatelliteButton = false;
         this.hoverAddSatelliteMenu = false;
+        this.hoverTimeline = false;
+        this.hoverLive = false;
         this.hoverSatelliteTLE = null;
         this.hoverSatelliteToRemove = null;
 
@@ -19,6 +22,20 @@ window.HUDScene = class {
         this.stringSearchQuery = "";
 
         this.showDockingInformation = false;
+        this.showTimeline = true;
+        this.timeMouseClickedX = 0;
+        this.timeMouseDragX = 0;
+        this.timePrevSpeed = 0;
+        this.timeDragging = false;
+
+        // Timeline marker
+        this.timeline = [];
+        this.timeline.push({"speed": -150, "name": "%sx SPEED"});
+        this.timeline.push({"speed": 1, "name": "ACTUAL SPEED"});
+        this.timeline.push({"speed": 50, "name": "%sx SPEED"});
+        this.timeline.push({"speed": 200, "name": "%sx SPEED"});
+        this.timeline.push({"speed": 350, "name": "%sx SPEED"});
+        this.timeline.push({"speed": 500, "name": "%sx SPEED"});
 
         this.textureSatellite = this.createImage("assets/img/hud/satellite.png");
         this.textureISS = this.createImage("assets/img/hud/iss.png");
@@ -26,6 +43,7 @@ window.HUDScene = class {
         this.textureMinus = this.createImage("assets/img/hud/minus.png");
         this.texturePlus = this.createImage("assets/img/hud/plus.png");
         this.textureDock = this.createImage("assets/img/hud/dock.png");
+        this.textureTime = this.createImage("assets/img/hud/time.png");
     }
 
     createHUDScene(hudCanvas, cameraHUD) {
@@ -93,12 +111,22 @@ window.HUDScene = class {
                     this.drawDockingList(focusedSatellite.docking, width - 10, 18);
                 }
 
+                let buttonY = height - 50;
+
                 // Draw earth focus button on right side
-                this.drawEarthFocusButton(width - 50, height - 50, 40, mouseX, mouseY);
+                this.drawEarthFocusButton(width - 50, buttonY, 40, mouseX, mouseY);
+                buttonY -= 50;
+
+                // Draw time changer button
+                if (!this.satelliteTracker.renderer.isMobile) {
+                    this.drawTimeButton(width - 50, buttonY, 40, mouseX, mouseY);
+                    buttonY -= 50;
+                }
 
                 // Draw docking toggle button
                 if (dockingAvailable) {
-                    this.drawDockingButton(width - 50, height - 100, 40, mouseX, mouseY);
+                    this.drawDockingButton(width - 50, buttonY, 40, mouseX, mouseY);
+                    buttonY -= 50;
                 }
 
                 if (!this.satelliteTracker.renderer.isMobile) {
@@ -110,6 +138,12 @@ window.HUDScene = class {
                         this.drawHint(width - 40, height - 40, "You can switch to earth view here", '#666666', '#ffffff', 0.4);
                     }
                 }
+            }
+
+            // Draw timeline to change the time
+            if (this.showTimeline) {
+                let shift = width < 1200 ? 1200 - width : 0;
+                this.drawTimeline(width / 2 - width / 4, height - 150 + shift / 2, width / 2, 100, mouseX, mouseY, date);
             }
 
             // Draw satellite list
@@ -145,7 +179,46 @@ window.HUDScene = class {
         }
     }
 
-    onClickScreen(mouseX, mouseY) {
+    onMouseMove(clientX, clientY) {
+        if (this.timeDragging) {
+            let offset = clientX - this.timeMouseClickedX;
+
+            this.timeMouseDragX = offset;
+            this.satelliteTracker.currentTime = this.satelliteTracker.getTime().getTime();
+            this.satelliteTracker.prevTime = this.satelliteTracker.getBrowserTime();
+            this.satelliteTracker.timeSpeed = 1 - offset / 2;
+        }
+    }
+
+    onMouseRelease(clientX, clientY) {
+        if (this.timeDragging) {
+            this.timeDragging = false;
+            this.satelliteTracker.renderer.controls.enabled = true;
+
+            let speed = this.satelliteTracker.timeSpeed;
+            let nearestDistance = -1;
+            let nearestMarkerSpeed = 0;
+
+            // Draw marker
+            for (let index in this.timeline) {
+                let marker = this.timeline[index];
+
+                let distance = Math.abs(marker.speed - speed);
+                if (distance < nearestDistance || nearestDistance === -1) {
+                    nearestDistance = distance;
+                    nearestMarkerSpeed = marker.speed;
+                }
+            }
+
+            this.timePrevSpeed = this.satelliteTracker.timeSpeed;
+            this.timeMouseDragX = (-nearestMarkerSpeed + 1) * 2;
+            this.satelliteTracker.currentTime = this.satelliteTracker.getTime().getTime();
+            this.satelliteTracker.prevTime = this.satelliteTracker.getBrowserTime();
+            this.satelliteTracker.timeSpeed = nearestMarkerSpeed;
+        }
+    }
+
+    onMouseClick(mouseX, mouseY) {
         if (this.hoverSatellite != null) {
             this.satelliteTracker.setFocusedSatellite(this.hoverSatellite);
         }
@@ -155,6 +228,26 @@ window.HUDScene = class {
 
         if (this.hoverToggleDockingButton) {
             this.showDockingInformation = !this.showDockingInformation;
+        }
+
+        if (this.hoverToggleTimeButton) {
+            this.showTimeline = !this.showTimeline;
+        }
+
+        // Time line dragging
+        if (this.showTimeline && !this.timeDragging && this.hoverTimeline) {
+            this.timeMouseClickedX = mouseX - this.timeMouseDragX;
+            this.timeDragging = true;
+            this.satelliteTracker.renderer.controls.enabled = false;
+        }
+
+        // Reset timeline
+        if (this.showTimeline && !this.timeDragging && this.hoverLive) {
+            this.timeMouseDragX = 0;
+
+            this.satelliteTracker.timeSpeed = 1;
+            this.satelliteTracker.prevTime = this.satelliteTracker.getBrowserTime();
+            this.satelliteTracker.currentTime = this.satelliteTracker.getBrowserTime();
         }
 
         // Click on search bar
@@ -229,6 +322,16 @@ window.HUDScene = class {
         this.drawImage(this.textureDock, x - offset, y - offset, size + offset * 2, size + offset * 2, mouseOver ? 0.8 : 0.3);
         if (mouseOver) {
             this.drawRightText(x - 5, y + size / 2 + 4, (this.showDockingInformation ? "Hide" : "Show") + " docking information", '#ffffff', 20, false);
+        }
+    }
+
+    drawTimeButton(x, y, size, mouseX, mouseY) {
+        let mouseOver = this.hoverToggleTimeButton = mouseX > x && mouseX < x + size && mouseY > y && mouseY < y + size;
+        let offset = mouseOver ? 1 : 0;
+
+        this.drawImage(this.textureTime, x - offset, y - offset, size + offset * 2, size + offset * 2, mouseOver ? 0.8 : 0.3);
+        if (mouseOver) {
+            this.drawRightText(x - 5, y + size / 2 + 4, (this.showTimeline ? "Hide" : "Show") + " speed settings", '#ffffff', 20, false);
         }
     }
 
@@ -351,7 +454,7 @@ window.HUDScene = class {
         this.drawText(x - width / 2 + padding + 3, y + padding + 30, this.stringSearchQuery, '#000000', height - 10, false);
 
         // Blinking cursor
-        if ((new Date().getTime() / 500).toFixed(0) % 2 === 0) {
+        if ((this.satelliteTracker.getBrowserTime() / 500).toFixed(0) % 2 === 0) {
             let fontWidth = this.context.measureText(this.stringSearchQuery).width;
             this.drawText(x - width / 2 + padding + 3 + fontWidth, y + padding + 30 - 4, "_", '#000000', height - 10, false);
         }
@@ -368,7 +471,7 @@ window.HUDScene = class {
             this.drawText(x - width / 2, listY + 24, "Loading satellite database...", '#FFFFFF', entryHeight, false);
         } else {
             // Draw results
-            let amount = 8;
+            let matches = 0;
             for (let id in this.satelliteTracker.registry.database) {
                 let tle = this.satelliteTracker.registry.database[id];
                 let name = tle[0];
@@ -382,27 +485,34 @@ window.HUDScene = class {
                 });
 
                 // Match to the query
-                if (amount > 0 && (name.toString().toLowerCase().includes(query) || id.toString().includes(query)) && !alreadyAdded) {
-                    let hoverEntry = mouseX > x - width / 2 && mouseX < x + width / 2 && mouseY > listY && mouseY < listY + entryHeight;
+                if ((name.toString().toLowerCase().includes(query) || id.toString().includes(query)) && !alreadyAdded) {
+                    if (matches <= 8) {
+                        let hoverEntry = mouseX > x - width / 2 && mouseX < x + width / 2 && mouseY > listY && mouseY < listY + entryHeight;
 
-                    // Draw satellite entry
-                    this.drawRect(x - width / 2, listY, x + width / 2, listY + entryHeight, gradient);
-                    this.drawImage(this.textureSatellite, x - width / 2 + 1, listY + 1, entryHeight - 2, entryHeight - 2, hoverEntry ? 1.0 : 0.8);
-                    this.drawText(x - width / 2 + entryHeight + 4, listY + entryHeight - 9, name, "rgba(255,255,255, " + (hoverEntry ? 0.8 : 0.5) + ")", entryHeight / 2, false);
-                    this.drawRightText(x + width / 2 - entryHeight - 4, listY + entryHeight - 9, id, "rgba(255,255,255, " + (hoverEntry ? 0.8 : 0.5) + ")", entryHeight / 2, false);
+                        // Draw satellite entry
+                        this.drawRect(x - width / 2, listY, x + width / 2, listY + entryHeight, gradient);
+                        this.drawImage(this.textureSatellite, x - width / 2 + 1, listY + 1, entryHeight - 2, entryHeight - 2, hoverEntry ? 1.0 : 0.8);
+                        this.drawText(x - width / 2 + entryHeight + 4, listY + entryHeight - 9, name, "rgba(255,255,255, " + (hoverEntry ? 0.8 : 0.5) + ")", entryHeight / 2, false);
+                        this.drawRightText(x + width / 2 - entryHeight - 4, listY + entryHeight - 9, id, "rgba(255,255,255, " + (hoverEntry ? 0.8 : 0.5) + ")", entryHeight / 2, false);
 
-                    // Add button
-                    let hoverAddButton = mouseX > x + width / 2 - entryHeight && mouseX < x + width / 2 && mouseY > listY && mouseY < listY + entryHeight;
-                    let iconOffset = hoverAddButton ? 3 : 5;
-                    this.drawImage(this.texturePlus, x + width / 2 - entryHeight + iconOffset, listY + iconOffset, entryHeight - iconOffset * 2, entryHeight - iconOffset * 2, hoverAddButton ? 0.8 : 0.4);
+                        // Add button
+                        let hoverAddButton = mouseX > x + width / 2 - entryHeight && mouseX < x + width / 2 && mouseY > listY && mouseY < listY + entryHeight;
+                        let iconOffset = hoverAddButton ? 3 : 5;
+                        this.drawImage(this.texturePlus, x + width / 2 - entryHeight + iconOffset, listY + iconOffset, entryHeight - iconOffset * 2, entryHeight - iconOffset * 2, hoverAddButton ? 0.8 : 0.4);
 
-                    if (hoverEntry) {
-                        this.hoverSatelliteTLE = tle;
+                        if (hoverEntry) {
+                            this.hoverSatelliteTLE = tle;
+                        }
+
+                        listY += entryHeight + 4;
                     }
 
-                    listY += entryHeight + 4;
-                    amount--;
+                    matches++;
                 }
+            }
+
+            if (matches > 8) {
+                this.drawText(x - width / 2, listY + 14, "and " + (matches - 8) + " more...", '#FFFFFF', 12, false);
             }
         }
     }
@@ -418,6 +528,95 @@ window.HUDScene = class {
     }
 
 
+// ############ Timeline ############
+
+    drawTimeline(x, y, width, height, mouseX, mouseY, date) {
+        let thickness = 70;
+        let radius = width / 1.5;
+
+        let centerX = x + width / 2;
+        let centerY = y + radius;
+
+        // Draw timeline ring background
+        this.drawArc(centerX, centerY + thickness / 2, radius, 0, 180, thickness, "rgba(0,0,0, 0.5)");
+
+        // Draw circle fill
+        this.drawArc(centerX, centerY + thickness / 2, radius - thickness * 1.5, 0, 180, thickness * 2, "rgba(0,0,0, 0.7)");
+
+        // Draw timeline line
+        this.drawArc(centerX, centerY + thickness / 2, radius, 0, 90, 2, '#ffffff');
+        this.drawArc(centerX, centerY + thickness / 2, radius, 90, 180, 1, "rgba(1,1,1, 0.7)");
+
+        let prevSpeed = this.timePrevSpeed;
+        let speed = this.satelliteTracker.timeSpeed;
+
+        let snapAnimationPercentage = Math.min(1, 1.0 / 100 * (this.satelliteTracker.getBrowserTime() - this.satelliteTracker.prevTime));
+        let snapAnimationSpeedOffset = this.timeDragging ? 0 : (prevSpeed - speed) * (1 - snapAnimationPercentage);
+
+        // Draw marker
+        for (let index in this.timeline) {
+            let marker = this.timeline[index];
+
+            let rotationOffset = (marker.speed - speed - snapAnimationSpeedOffset) / 10;
+
+            let markerRelX = 0;
+            let markerRelY = -radius + thickness / 2;
+            let bottomLabel = index % 2 === 0;
+            let enabled = rotationOffset <= 0;
+
+            this.context.save();
+            this.context.translate(centerX, centerY);
+            this.context.rotate(rotationOffset / 180 * Math.PI);
+
+            // Draw round marker
+            this.drawRoundRect(markerRelX - 6, markerRelY - 6, 6 * 2, 6 * 2, 6, 0, '#000000', '#000000');
+            this.drawArc(markerRelX, markerRelY, 7, 0, 360, 2, '#ffffff')
+
+            if (enabled) {
+                this.drawRoundRect(markerRelX - 2, markerRelY - 2, 2 * 2, 2 * 2, 2, 0, '#ffffff', '#ffffff');
+            }
+
+            // Draw connector
+            this.drawRect(markerRelX - 1, markerRelY + (bottomLabel ? 7 : -12), markerRelX + 1, markerRelY + (bottomLabel ? 12 : -7), '#ffffff')
+
+            // Draw label
+            let text = marker.name.includes("%s") ? marker.name.replace("%s", marker.speed) : marker.name;
+            this.drawCenteredText(markerRelX, markerRelY + (bottomLabel ? 26 : -18), text, enabled ? '#ffffff' : '#aaaaaa', 12, true);
+
+            this.context.restore();
+        }
+
+        // Draw timer
+        let offset = (this.satelliteTracker.getTime() - this.satelliteTracker.getBrowserTime()) / 1000;
+        let prefix = offset < 0 ? "-" : "+";
+        let value = Math.abs(offset);
+        let hours = Math.floor(value / 3600);
+        let minutes = Math.floor((value - (hours * 3600)) / 60);
+        let seconds = (value - (hours * 3600) - (minutes * 60)) | 0;
+
+        let isLive = hours === 0 && minutes === 0 && seconds === 0;
+        let currentSpeed = this.satelliteTracker.timeSpeed;
+
+        if (hours < 10) hours = "0" + hours;
+        if (minutes < 10) minutes = "0" + minutes;
+        if (seconds < 10) seconds = "0" + seconds;
+
+        let timerString = "T" + prefix + hours + ":" + minutes + ":" + seconds;
+        let stateString = currentSpeed === 1 ? "ACTUAL SPEED" : (currentSpeed + "x SPEED");
+
+        // Current speed display
+        this.drawCenteredText(x + width / 2, y + height + 5, timerString, '#ffffff', 30, false);
+        this.drawCenteredText(x + width / 2, y + height + 5 + 25, stateString, '#aaaaaa', 18, false);
+
+        this.hoverLive = mouseX > x + width / 2 + 100 && mouseX < x + width / 2 + 160 && mouseY > y + height && mouseY < y + height + 25
+        this.hoverTimeline = mouseX > x && mouseX < x + width && mouseY > y && mouseY < y + height;
+
+        // Live state
+        let color = isLive ? '#ff0000' :  this.hoverLive ? '#ffffff' : '#888888';
+        this.drawRoundRect(x + width / 2 + 100, y + height + 5, 6 * 2, 6 * 2, 6, 0, color, color);
+        this.drawText(x + width / 2 + 115, y + height + 17, "LIVE", color, 20, isLive);
+    }
+
 // ############ Telemetry ############
 
     drawTelemetry(satellite, x, y, width, height, date) {
@@ -432,7 +631,7 @@ window.HUDScene = class {
             this.drawRect(x, y, curveStartX, y + height, gradient);
             this.drawSpeedometerBackgroundCurve(curveStartX, y, width - curveStartX, height, gradient);
 
-            this.drawSpeedometer(x + 100, y + 90, state.getSpeed(), 30000, "SPEED", "KM/H");
+            this.drawSpeedometer(x + 100, y + 90, state.getSpeed() * this.satelliteTracker.timeSpeed, 30000, "SPEED", "KM/H");
             this.drawSpeedometer(x + 280, y + 90, state.altitude, 460, "ALTITUDE", "KM");
 
             this.drawCenteredText(x + 100 + (280 - 100) / 2, y + height - 8, satellite.name + " TELEMETRY", '#999999', 14, false);
@@ -449,7 +648,7 @@ window.HUDScene = class {
         let initializationDuration = 2000;
 
         // Initialize animation
-        let timePassed = new Date().getTime() - this.satelliteTracker.initializeTime;
+        let timePassed = this.satelliteTracker.getBrowserTime() - this.satelliteTracker.initializeTime;
         let initializeProgress = sigmoid(Math.max(0, Math.min(1, timePassed / initializationDuration)) * 10);
 
         // Progress position
@@ -469,9 +668,24 @@ window.HUDScene = class {
         // Draw start hook
         this.drawArc(x, y, radius - 3, arcStart - 1, arcStart + 1, 12, '#ffffff');
 
+        // Animate value
+        value = Math.round(value * initializeProgress);
+
+        let labelValue = value;
+
+        // Thousand
+        if (value <= -10000 || value >= 100000) {
+            labelValue = ((value / 1000) | 0) + "k";
+        }
+
+        // Million
+        if (value <= -1000000 || value >= 1000000) {
+            labelValue = ((value / 1000000) | 0) + "M";
+        }
+
         // Labels
         this.drawCenteredText(x, y - 35, title, '#999999', 12, true);
-        this.drawCenteredText(x, y + 8, Math.round(value * initializeProgress), '#ffffff', 45, false);
+        this.drawCenteredText(x, y + 8, labelValue, '#ffffff', 45, false);
         this.drawCenteredText(x, y + 30, unit, '#999999', 12, true);
     }
 
@@ -535,7 +749,7 @@ window.HUDScene = class {
         let visibleDuration = 8000;
 
         // Fade in
-        let timePassed = new Date().getTime() - this.satelliteTracker.initializeTime;
+        let timePassed = this.satelliteTracker.getBrowserTime() - this.satelliteTracker.initializeTime;
         let initializeProgress = sigmoid(Math.max(0, Math.min(1, timePassed / initializationDuration)) * 10);
 
         // Fade out
@@ -573,6 +787,9 @@ window.HUDScene = class {
         // Draw text
         this.context.globalAlpha = 1.0 * initializeProgress;
         this.drawText(x - width + padding, y - padding, string, fontColor, fontSize, false);
+
+        // Reset
+        this.context.globalAlpha = 1.0;
     }
 
     drawRoundRect(x, y, width, height, radius = 5, thickness = 2, color, strokeColor, fill = true, stroke = true) {

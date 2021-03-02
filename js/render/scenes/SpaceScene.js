@@ -118,7 +118,7 @@ window.SpaceScene = class {
         this.satelliteTracker.createSatellites(this.earthGroup, foreground);
 
         // Init
-        this.updateSpace(new Date(), null);
+        this.updateSpace(new Date(this.satelliteTracker.getBrowserTime()), null);
 
         // Max camera distance in space
         this.renderer.controls.maxDistance = EARTH_RADIUS * 8;
@@ -187,10 +187,8 @@ window.SpaceScene = class {
 
         // Update controls
         this.renderer.controls.zoomSpeed = cameraDistance < 200 || cameraDistance >= EARTH_RADIUS ? 1 : 8;
-        //if (!debug) {
         this.renderer.controls.target = new THREE.Vector3(0, this.satelliteTracker.focusedEarth ? this.centerGroup.position.y : 0, 0);
         this.renderer.controls.minDistance = this.satelliteTracker.focusedEarth ? EARTH_RADIUS + ATMOSPHERE_HEIGHT * 8 : 10;
-        //}
 
         // Update bump scale of earth
         this.earth.material.bumpScale = cameraDistance < EARTH_RADIUS ? 1000 : 10000;

@@ -9,12 +9,13 @@ window.SatelliteTracker = class {
 
         // Init loading progress
         let scope = this;
-        this.loadingProgress = new LoadingProgress({
-            "texture": "Loading Textures...",
-            "model": "Loading ISS model..."
-        }, function () {
-            scope.initializationCompleted();
-        });
+        this.loadingProgress = new LoadingProgress(this,
+            {
+                "texture": "Loading Textures...",
+                "model": "Loading ISS model..."
+            }, function () {
+                scope.initializationCompleted();
+            });
 
         // Create texture registry
         this.textureRegistry = new TextureRegistry(this, function (state, progress) {
@@ -33,6 +34,9 @@ window.SatelliteTracker = class {
         this.debug = false;
         this.focusedSatellite = null;
         this.initializeTime = null;
+        this.currentTime = this.getBrowserTime();
+        this.prevTime = this.getBrowserTime();
+        this.timeSpeed = 1;
 
         // Stats
         this.stats = new Stats();
@@ -81,14 +85,13 @@ window.SatelliteTracker = class {
     }
 
     initializationCompleted() {
-        this.initializeTime = new Date().getTime();
+        this.initializeTime = this.getBrowserTime();
     }
 
     /**
      * Current camera focused satellite
      * @returns Satellite
      */
-
     getFocusedSatellite() {
         return this.focusedSatellite;
     }
@@ -115,5 +118,14 @@ window.SatelliteTracker = class {
         } else {
             this.focusedEarth = true;
         }
+    }
+
+    getTime() {
+        let passed = (this.getBrowserTime() - this.prevTime) * (this.timeSpeed > -1.0 && this.timeSpeed < 0 ? 0 : this.timeSpeed);
+        return new Date(this.currentTime + (passed | 0));
+    }
+
+    getBrowserTime() {
+        return new Date().getTime();
     }
 }

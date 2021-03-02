@@ -13,8 +13,6 @@ window.Renderer = class {
 
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
-
-        this.appStart = new Date().getTime();
     }
 
     init(spaceScene, hudScene) {
@@ -68,8 +66,8 @@ window.Renderer = class {
         // Start stats
         this.satelliteTracker.stats.begin();
 
-        // The current time for tracking (Super fast time speed in debug mode)
-        let date = this.satelliteTracker.debug ? new Date(this.appStart + (new Date().getTime() - this.appStart) * 600) : new Date();
+        // The current time for tracking
+        let date = this.satelliteTracker.getTime();
 
         // Eclipse
         // date = new Date(1607962408000);
@@ -115,10 +113,11 @@ window.Renderer = class {
 
         // Mouse click listener
         let dom = this.webRenderer.domElement;
-        dom.addEventListener("click", event => scope.onClick(event), true);
+        dom.addEventListener("mousedown", event => scope.onMouseClick(event), true);
+        dom.addEventListener("mouseup", event => scope.onMouseRelease(event), true);
         dom.addEventListener("touchstart", event => scope.onTouchStart(event), true);
         dom.addEventListener("touchend", event => scope.onTouchEnd(event), true);
-        dom.addEventListener("mousemove", event => scope.onMove(event), true);
+        dom.addEventListener("mousemove", event => scope.onMouseMove(event), true);
 
         // Keyboard
         window.addEventListener('keydown', event => scope.onKeyDown(event), false);
@@ -167,16 +166,22 @@ window.Renderer = class {
             return;
 
         let touch = event.changedTouches[0];
-        this.onClick(touch);
+        this.onMouseClick(touch);
     }
 
-    onMove(event) {
+    onMouseRelease(event) {
+        this.satelliteTracker.hudScene.onMouseRelease(event.clientX, event.clientY);
+    }
+
+    onMouseMove(event) {
         this.mouseX = event.clientX;
         this.mouseY = event.clientY;
+
+        this.satelliteTracker.hudScene.onMouseMove(event.clientX, event.clientY);
     }
 
-    onClick(event) {
-        this.satelliteTracker.hudScene.onClickScreen(event.clientX, event.clientY);
+    onMouseClick(event) {
+        this.satelliteTracker.hudScene.onMouseClick(event.clientX, event.clientY);
 
         this.mouse.x = (event.clientX / this.webRenderer.domElement.clientWidth) * 2 - 1;
         this.mouse.y = -(event.clientY / this.webRenderer.domElement.clientHeight) * 2 + 1;
