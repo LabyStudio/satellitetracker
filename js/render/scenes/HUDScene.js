@@ -631,7 +631,7 @@ window.HUDScene = class {
             this.drawRect(x, y, curveStartX, y + height, gradient);
             this.drawSpeedometerBackgroundCurve(curveStartX, y, width - curveStartX, height, gradient);
 
-            this.drawSpeedometer(x + 100, y + 90, state.getSpeed() * this.satelliteTracker.timeSpeed, 30000, "SPEED", "KM/H");
+            this.drawSpeedometer(x + 100, y + 90, state.getSpeed(), 30000, "SPEED", "KM/H");
             this.drawSpeedometer(x + 280, y + 90, state.altitude, 460, "ALTITUDE", "KM");
 
             this.drawCenteredText(x + 100 + (280 - 100) / 2, y + height - 8, satellite.name + " TELEMETRY", '#999999', 14, false);
