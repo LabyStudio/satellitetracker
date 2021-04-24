@@ -7,6 +7,7 @@ const MOON_RADIUS = 1737100;
 const ATMOSPHERE_STRENGTH = 1.0;
 const ISS_ORBIT_TIME = 92;
 const CLOUD_HEIGHT = 18288;
+const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
 // Sun
 const J2000_0 = 946728000000;

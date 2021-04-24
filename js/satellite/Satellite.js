@@ -65,6 +65,22 @@ window.Satellite = class {
      * @returns {{rotation: THREE.Vector3, position: SatellitePositionAtTime}}
      */
     getPositionAndRotationAtTime(date = new Date()) {
+        let positionData = this.getPositionData(date);
+        let position = positionData.position;
+
+        // Get rotation
+        let rotation = lookAtThreeJs(positionData.coordinatePosition, positionData.prevCoordinatePosition);
+
+        // Store coordinate position into satellite position object
+        position.x = positionData.coordinatePosition.x;
+        position.y = positionData.coordinatePosition.y;
+        position.z = positionData.coordinatePosition.z;
+
+        // Return the result
+        return {position, rotation, positionData};
+    }
+
+    getPositionData(date = new Date()) {
         let timeDifference = 1000 * 60;
 
         // A few moments before
@@ -78,16 +94,7 @@ window.Satellite = class {
         let coordinatePosition = latLonDegToVector3(position.latitude, position.longitude + 90, position.getDistanceToEarthCenter());
         let prevCoordinatePosition = latLonDegToVector3(prevPosition.latitude, prevPosition.longitude + 90, prevPosition.getDistanceToEarthCenter());
 
-        // Get rotation
-        let rotation = lookAtThreeJs(coordinatePosition, prevCoordinatePosition);
-
-        // Store coordinate position into satellite position object
-        position.x = coordinatePosition.x;
-        position.y = coordinatePosition.y;
-        position.z = coordinatePosition.z;
-
-        // Return the result
-        return {position, rotation};
+        return {position, coordinatePosition, prevPosition, prevCoordinatePosition};
     }
 
     updateModel(date, showLabels, focused) {

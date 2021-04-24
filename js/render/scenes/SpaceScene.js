@@ -62,8 +62,8 @@ window.SpaceScene = class {
         const earthMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
         this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
         earthMaterial.map = this.satelliteTracker.textureRegistry.get('earth_map');
-        earthMaterial.bumpMap  = this.satelliteTracker.textureRegistry.get('earth_bump');
-        earthMaterial.normalMap  = this.satelliteTracker.textureRegistry.get('earth_normal');
+        earthMaterial.bumpMap = this.satelliteTracker.textureRegistry.get('earth_bump');
+        earthMaterial.normalMap = this.satelliteTracker.textureRegistry.get('earth_normal');
         earthMaterial.specularMap = this.satelliteTracker.textureRegistry.get('earth_spec');
         earthMaterial.specular = new THREE.Color(0x050505);
         earthMaterial.normalScale = new THREE.Vector2(0.4, 0.4);
@@ -172,8 +172,13 @@ window.SpaceScene = class {
         this.centerGroup.position.set(0, -posAndRot.position.getDistanceToEarthCenter(), 0);
 
         // Rotate the earth with the ISS position to the top
-        this.earthGroup.rotation.x = toRadians(-posAndRot.position.latitude + 90);
-        this.earthGroup.rotation.y = toRadians(-posAndRot.position.longitude + 90);
+        if (this.satelliteTracker.focusedEarth) {
+            this.earthGroup.rotation.y = toRadians((date.getTime() % DAY_IN_MS / DAY_IN_MS) * 360);
+        } else {
+            // Rotate earth
+            this.earthGroup.rotation.x = toRadians(-posAndRot.position.latitude + 90);
+            this.earthGroup.rotation.y = toRadians(-posAndRot.position.longitude + 90);
+        }
 
         // Sync position of satellites in foreground with the background
         if (layers !== null) {
@@ -183,7 +188,7 @@ window.SpaceScene = class {
 
         // Cloud movement
         this.clouds.rotation.x = 0;
-        this.clouds.rotation.y = date.getTime() / 3000000;
+        this.clouds.rotation.y = toRadians((date.getTime() % (DAY_IN_MS * 2) / (DAY_IN_MS * 2)) * 360);
 
         // Update controls
         this.renderer.controls.zoomSpeed = cameraDistance < 200 || cameraDistance >= EARTH_RADIUS ? 1 : 8;
