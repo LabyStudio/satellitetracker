@@ -66,7 +66,7 @@ window.ISS = class {
         satellite.dock(46613, "Soyuz MS-17", ISS.PORT_MRM_1);
 
         // Docking dragons
-        satellite.dock(46920, "Crew-1 Dragon", ISS.PORT_PMA_2);
+        //satellite.dock(46920, "Crew-1 Dragon", ISS.PORT_PMA_2);
         satellite.dock(46920, "Crew-2 Dragon", ISS.PORT_PMA_3);
         //satellite.dock(46920, "CRS-21 Cargo Dragon", ISS.PORT_PMA_3);
 
