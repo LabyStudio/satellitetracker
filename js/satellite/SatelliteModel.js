@@ -49,7 +49,7 @@ window.SatelliteModel = class {
             $.get('assets/models/' + id + '/pointer.id', function (data, status) {
 
                 // Load pointed model
-                scope.loadModel(data, "default", successCallback, callback, function (error) {
+                scope.loadModel(data, state, successCallback, callback, function (error) {
 
                 });
             }).fail(function () {
